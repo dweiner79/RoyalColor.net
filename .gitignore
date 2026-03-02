@@ -1,0 +1,25 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment / secrets
+.env
+.env.*
+
+# Node (if added later)
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+.output/
+
+# Azure Static Web Apps
+.azure/

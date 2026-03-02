@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Color Quiz | Royal Color Analysis &amp; Styling</title>
+    <meta name="description" content="Take our free 2-minute color quiz to discover your seasonal color palette. Find out if you're a Spring, Summer, Autumn, or Winter!">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">
+                <span class="crown">&#9830;</span> Royal Color <span class="logo-sub">Analysis &amp; Styling</span>
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Home</a>
+                <a href="services.html">Services</a>
+                <a href="quiz.html" class="active">Color Quiz</a>
+                <a href="about.html">About</a>
+                <a href="booking.html">Contact</a>
+                <a href="booking.html" class="btn btn-primary btn-sm nav-cta">Book Now</a>
+            </div>
+            <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Quiz Container -->
+    <div class="quiz-container container">
+        <div class="text-center" style="margin-bottom:2rem;">
+            <span class="section-label">Free Color Quiz</span>
+            <h1 style="font-size:2rem;margin-bottom:0.5rem;">Discover Your Color Season</h1>
+            <p style="color:var(--color-text-muted);">Answer 8 quick questions to find your most flattering palette</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="quiz-progress" id="quizProgress">
+            <div class="quiz-progress-step active"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+            <div class="quiz-progress-step"></div>
+        </div>
+
+        <!-- Quiz Card -->
+        <div class="quiz-card" id="quizCard">
+            <!-- Questions are injected by JavaScript -->
+            <div id="quizContent"></div>
+            <div class="quiz-nav" id="quizNav">
+                <button class="btn btn-secondary btn-sm" id="prevBtn" onclick="prevQuestion()" style="visibility:hidden;">&#8592; Back</button>
+                <button class="btn btn-primary btn-sm" id="nextBtn" onclick="nextQuestion()" disabled>Next &#8594;</button>
+            </div>
+        </div>
+
+        <!-- Result (hidden by default) -->
+        <div class="quiz-card quiz-result" id="quizResult" style="display:none;">
+            <h2 style="margin-bottom:0.5rem;">Your Color Season Is...</h2>
+            <div id="resultBadge" class="result-season-badge"></div>
+            <p id="resultDescription" style="font-size:1.05rem;margin-bottom:1rem;"></p>
+
+            <h4 style="margin-bottom:1rem;">Your Best Colors</h4>
+            <div class="result-palette" id="resultPalette"></div>
+
+            <div id="resultDetails" style="text-align:left;margin-top:2rem;padding:1.5rem;background:var(--color-cream);border-radius:var(--radius-md);"></div>
+
+            <div style="margin-top:2rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+                <a href="booking.html" class="btn btn-primary">Book Full Color Analysis</a>
+                <button class="btn btn-secondary" onclick="restartQuiz()">Retake Quiz</button>
+            </div>
+
+            <p style="margin-top:2rem;font-size:0.85rem;color:var(--color-text-muted);">
+                This quiz gives an approximate result. For a precise analysis using professional draping techniques,
+                <a href="booking.html" style="color:var(--color-primary);">book a full color analysis session</a>.
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo"><span>&#9830;</span> Royal Color <span class="logo-sub">Analysis &amp; Styling</span></div>
+                    <p>Professional color analysis and personal styling to help you look and feel your absolute best, every day.</p>
+                </div>
+                <div>
+                    <h4>Services</h4>
+                    <ul class="footer-links">
+                        <li><a href="services.html">Color Analysis</a></li>
+                        <li><a href="services.html">Style Consultation</a></li>
+                        <li><a href="services.html">Wardrobe Edit</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="quiz.html">Color Quiz</a></li>
+                        <li><a href="booking.html">Book Now</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Contact</h4>
+                    <ul class="footer-links">
+                        <li><a href="mailto:royalcoloranalysis@gmail.com">royalcoloranalysis@gmail.com</a></li>
+                        <li><a href="tel:+15551234567">(555) 123-4567</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>&copy; 2026 Royal Color Analysis &amp; Styling. All rights reserved.</span>
+                <span>Designed with &#9829; for women who love color</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/quiz.js"></script>
+</body>
+</html>

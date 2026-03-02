@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Now | Royal Color Analysis &amp; Styling</title>
+    <meta name="description" content="Schedule your personal color analysis or style consultation. Pick a day and time based on real-time availability.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AU4Hn7JWWIu_5Y8mw5Fyr6Gosjs40iShbPfdQJLKx-wpSJf4ZpjNFtigyuztMYslE3RGdidCNZFu28DA&currency=USD"></script>
+    <style>
+        /* ───── Step Progress Bar ───── */
+        .booking-steps{display:flex;justify-content:center;gap:1rem;margin-bottom:3rem;flex-wrap:wrap}
+        .booking-step{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:var(--color-text-muted)}
+        .booking-step.active{color:var(--color-primary);font-weight:600}
+        .booking-step.completed{color:var(--color-primary)}
+        .step-num{width:32px;height:32px;border-radius:50%;background:var(--color-border);color:var(--color-text-muted);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;transition:var(--transition)}
+        .booking-step.active .step-num,.booking-step.completed .step-num{background:var(--color-primary);color:#fff}
+        .step-line{width:32px;height:2px;background:var(--color-border);flex-shrink:0}
+
+        /* ───── Panels ───── */
+        .booking-panel{display:none}.booking-panel.active{display:block}
+
+        /* ───── Service Tiles ───── */
+        .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:2rem}
+        .svc-tile{background:#fff;border:2px solid var(--color-border);border-radius:var(--radius-md);padding:1.4rem;cursor:pointer;transition:var(--transition);text-align:center}
+        .svc-tile:hover{border-color:var(--color-primary-light);box-shadow:var(--shadow-sm)}
+        .svc-tile.selected{border-color:var(--color-primary);background:rgba(139,34,82,.04)}
+        .svc-tile .t-icon{font-size:2rem;margin-bottom:.4rem}
+        .svc-tile h4{font-size:1rem;margin-bottom:.2rem}
+        .svc-tile .t-price{font-family:var(--font-heading);font-weight:700;color:var(--color-primary);font-size:1.1rem}
+        .svc-tile .t-dur{font-size:.8rem;color:var(--color-text-muted)}
+        .svc-tile .t-chk{display:none;color:var(--color-primary);font-size:1.1rem;margin-top:.4rem}
+        .svc-tile.selected .t-chk{display:block}
+
+        /* ───── Selected-service mini card ───── */
+        .svc-card{display:flex;align-items:center;gap:1rem;background:linear-gradient(135deg,rgba(139,34,82,.06),rgba(139,34,82,.02));border:2px solid var(--color-primary);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:1.5rem}
+        .svc-card .sc-icon{font-size:2rem;flex-shrink:0}
+        .svc-card .sc-name{font-family:var(--font-heading);font-weight:700;font-size:1.1rem}
+        .svc-card .sc-meta{display:flex;gap:.75rem;font-size:.88rem}
+        .svc-card .sc-price{font-weight:700;color:var(--color-primary)}
+        .svc-card .sc-dur{color:var(--color-text-muted)}
+
+        /* ───── Calendar Month Grid ───── */
+        .cal-wrap{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--color-border);overflow:hidden;margin-bottom:1.5rem}
+        .cal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--color-primary);color:#fff}
+        .cal-header h3{margin:0;font-size:1.1rem;font-weight:600}
+        .cal-nav{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:.25rem .5rem;border-radius:var(--radius-sm);transition:var(--transition)}
+        .cal-nav:hover{background:rgba(255,255,255,.2)}
+        .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+        .cal-dow{padding:.6rem 0;font-size:.75rem;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;background:var(--color-cream)}
+        .cal-day{padding:.7rem .25rem;font-size:.9rem;border:1px solid transparent;cursor:default;transition:var(--transition);position:relative}
+        .cal-day.empty{background:transparent}
+        .cal-day.past,.cal-day.closed{color:#ccc}
+        .cal-day.available{cursor:pointer;font-weight:500;color:var(--color-text)}
+        .cal-day.available:hover{background:rgba(139,34,82,.08);border-radius:var(--radius-sm)}
+        .cal-day.available::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#2e7d32}
+        .cal-day.unavail{color:#bbb}
+        .cal-day.sel{background:var(--color-primary);color:#fff;border-radius:var(--radius-sm);font-weight:700}
+        .cal-day.sel::after{background:#fff}
+        .cal-loading{text-align:center;padding:4rem 1rem;color:var(--color-text-muted)}
+
+        /* ───── Time Slots ───── */
+        .slots-section h4{margin-bottom:.75rem}
+        .slots-grid{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+        .slot-btn{padding:.5rem 1rem;border:2px solid var(--color-border);border-radius:var(--radius-md);background:#fff;cursor:pointer;font-size:.88rem;font-weight:500;transition:var(--transition)}
+        .slot-btn:hover{border-color:var(--color-primary-light);background:rgba(139,34,82,.04)}
+        .slot-btn.sel{border-color:var(--color-primary);background:var(--color-primary);color:#fff}
+        .slots-empty{padding:2rem;text-align:center;color:var(--color-text-muted);font-size:.95rem}
+
+        /* ───── Info Form ───── */
+        .info-form .fg{margin-bottom:1.25rem}
+        .info-form label{display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;color:var(--color-text)}
+        .info-form input,.info-form textarea{width:100%;padding:.7rem 1rem;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-size:.95rem;font-family:var(--font-body);transition:var(--transition)}
+        .info-form input:focus,.info-form textarea:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.1)}
+        .info-form textarea{min-height:80px;resize:vertical}
+        .form-row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+        /* ───── Payment / Confirm ───── */
+        .pay-box{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--color-border);padding:2rem;max-width:520px;margin:0 auto}
+        .summary-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
+        .summary-table td{padding:.45rem 0;font-size:.95rem}
+        .summary-table td:first-child{font-weight:600;color:var(--color-text-muted);width:120px}
+        .summary-table td:last-child{color:var(--color-text)}
+        .summary-total{display:flex;justify-content:space-between;padding:.75rem 0;border-top:2px solid var(--color-border);margin-bottom:1.5rem;font-size:1.15rem;font-weight:700}
+        .summary-total .price{color:var(--color-primary)}
+        .pay-note{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;font-size:.82rem;color:var(--color-text-muted)}
+
+        .confirm-banner{text-align:center;padding:3rem 2rem}
+        .confirm-banner .chk{width:64px;height:64px;border-radius:50%;background:#2e7d32;color:#fff;font-size:2rem;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem}
+        .confirm-banner h2{color:#2e7d32;margin-bottom:.5rem}
+        .confirm-banner p{color:var(--color-text-muted);max-width:420px;margin:0 auto .5rem}
+
+        /* ───── Nav buttons row ───── */
+        .btn-row{display:flex;justify-content:space-between;gap:1rem;margin-top:1.5rem;flex-wrap:wrap}
+        .btn-row .btn{min-width:140px}
+
+        /* ───── Contact grid ───── */
+        .contact-alt-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem}
+        .contact-alt-card{background:#fff;border-radius:var(--radius-md);padding:1.5rem;border:1px solid var(--color-border);text-align:center;transition:var(--transition)}
+        .contact-alt-card:hover{box-shadow:var(--shadow-sm)}
+        .contact-alt-card .card-icon{font-size:2rem;margin-bottom:.75rem}
+
+        /* ───── Responsive ───── */
+        @media(max-width:768px){
+            .svc-grid{grid-template-columns:1fr 1fr}
+            .contact-alt-grid{grid-template-columns:1fr}
+            .form-row2{grid-template-columns:1fr}
+            .booking-steps{gap:.6rem}
+            .step-line{width:20px}
+        }
+        @media(max-width:480px){
+            .svc-grid{grid-template-columns:1fr}
+            .cal-day{padding:.5rem .15rem;font-size:.8rem}
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="navbar" id="navbar">
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <span class="crown">&#9830;</span> Royal Color <span class="logo-sub">Analysis &amp; Styling</span>
+        </a>
+        <div class="nav-links" id="navLinks">
+            <a href="index.html">Home</a>
+            <a href="services.html">Services</a>
+            <a href="quiz.html">Color Quiz</a>
+            <a href="about.html">About</a>
+            <a href="booking.html" class="active">Contact</a>
+            <a href="booking.html" class="btn btn-primary btn-sm nav-cta">Book Now</a>
+        </div>
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- Page Header -->
+<section class="page-header">
+    <div class="container">
+        <span class="section-label">Schedule Online</span>
+        <h1>Book Your Appointment</h1>
+        <p>Select a service, pick a date &amp; time, enter your details, and pay securely to confirm.</p>
+    </div>
+</section>
+
+<!-- Booking Flow -->
+<section class="section" style="padding-top:3rem;">
+    <div class="container" style="max-width:960px;">
+
+        <!-- Steps -->
+        <div class="booking-steps">
+            <div class="booking-step active" id="ind1"><div class="step-num">1</div><span>Service</span></div>
+            <div class="step-line"></div>
+            <div class="booking-step" id="ind2"><div class="step-num">2</div><span>Date &amp; Time</span></div>
+            <div class="step-line"></div>
+            <div class="booking-step" id="ind3"><div class="step-num">3</div><span>Details</span></div>
+            <div class="step-line"></div>
+            <div class="booking-step" id="ind4"><div class="step-num">4</div><span>Pay</span></div>
+        </div>
+
+        <!-- ═══════ STEP 1 — Choose Service ═══════ -->
+        <div class="booking-panel active" id="panel1">
+            <h3 class="text-center" style="margin-bottom:.4rem;">Which service are you interested in?</h3>
+            <p class="text-center" style="color:var(--color-text-muted);margin-bottom:2rem;">Select one to continue.</p>
+            <p class="text-center" style="color:var(--color-primary);font-size:.9rem;margin-bottom:1.5rem;">&#9432; Appointments must be booked at least 2 days in advance.</p>
+
+            <div class="svc-grid">
+                <div class="svc-tile" onclick="pickService(this)" data-name="Color Analysis" data-price="197" data-dur="90" data-icon="&#127912;" data-label="90 min">
+                    <div class="t-icon">&#127912;</div><h4>Color Analysis</h4>
+                    <div class="t-price">$197</div><div class="t-dur">90 minutes</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="Style Consultation" data-price="347" data-dur="120" data-icon="&#128134;" data-label="2 hours">
+                    <div class="t-icon">&#128134;</div><h4>Style Consultation</h4>
+                    <div class="t-price">$347</div><div class="t-dur">2 hours</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="Wardrobe Edit" data-price="275" data-dur="150" data-icon="&#128090;" data-label="2–3 hours">
+                    <div class="t-icon">&#128090;</div><h4>Wardrobe Edit</h4>
+                    <div class="t-price">$275</div><div class="t-dur">2–3 hours</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="Personal Shopping" data-price="225" data-dur="180" data-icon="&#128717;" data-label="3 hours">
+                    <div class="t-icon">&#128717;</div><h4>Personal Shopping</h4>
+                    <div class="t-price">$225</div><div class="t-dur">3 hours</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="Makeup Color Matching" data-price="150" data-dur="60" data-icon="&#128132;" data-label="60 min">
+                    <div class="t-icon">&#128132;</div><h4>Makeup Colors</h4>
+                    <div class="t-price">$150</div><div class="t-dur">60 minutes</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="VIP Experience" data-price="997" data-dur="480" data-icon="&#127775;" data-label="Full day">
+                    <div class="t-icon">&#127775;</div><h4>VIP Experience</h4>
+                    <div class="t-price">$997</div><div class="t-dur">Full day</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+                <div class="svc-tile" onclick="pickService(this)" data-name="Test Booking" data-price="0.01" data-dur="30" data-icon="&#128295;" data-label="30 min">
+                    <div class="t-icon">&#128295;</div><h4>Test Booking</h4>
+                    <div class="t-price">$0.01</div><div class="t-dur">30 minutes</div><div class="t-chk">&#10003; Selected</div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button class="btn btn-primary btn-lg" id="btn1" onclick="goStep(2)" disabled>Continue &#8594;</button>
+            </div>
+        </div>
+
+        <!-- ═══════ STEP 2 — Date & Time ═══════ -->
+        <div class="booking-panel" id="panel2">
+            <div class="svc-card" id="svcCard2"></div>
+
+            <!-- Calendar -->
+            <div class="cal-wrap">
+                <div class="cal-header">
+                    <button class="cal-nav" id="calPrev" onclick="changeMonth(-1)">&#10094;</button>
+                    <h3 id="calTitle"></h3>
+                    <button class="cal-nav" id="calNext" onclick="changeMonth(1)">&#10095;</button>
+                </div>
+                <div id="calBody">
+                    <div class="cal-loading">Loading availability&hellip;</div>
+                </div>
+            </div>
+
+            <!-- Time Slots -->
+            <div class="slots-section" id="slotsSection" style="display:none;">
+                <h4>Available times on <span id="slotDateLabel" style="color:var(--color-primary);"></span></h4>
+                <div id="slotsBody">
+                    <div class="cal-loading">Loading times&hellip;</div>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="goStep(1)">&#8592; Back</button>
+                <button class="btn btn-primary btn-lg" id="btn2" onclick="goStep(3)" disabled>Continue &#8594;</button>
+            </div>
+        </div>
+
+        <!-- ═══════ STEP 3 — Your Details ═══════ -->
+        <div class="booking-panel" id="panel3">
+            <div class="svc-card" id="svcCard3"></div>
+
+            <div class="info-form">
+                <div class="form-row2">
+                    <div class="fg">
+                        <label for="cName">Full Name *</label>
+                        <input type="text" id="cName" placeholder="Jane Smith" required>
+                    </div>
+                    <div class="fg">
+                        <label for="cEmail">Email Address *</label>
+                        <input type="email" id="cEmail" placeholder="jane@example.com" required>
+                    </div>
+                </div>
+                <div class="form-row2">
+                    <div class="fg">
+                        <label for="cPhone">Phone Number</label>
+                        <input type="tel" id="cPhone" placeholder="(555) 123-4567">
+                    </div>
+                    <div class="fg">
+                        <label for="cNotes">Notes / Questions</label>
+                        <input type="text" id="cNotes" placeholder="Anything we should know?">
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="goStep(2)">&#8592; Back</button>
+                <button class="btn btn-primary btn-lg" id="btn3" onclick="goStep(4)">Continue to Payment &#8594;</button>
+            </div>
+        </div>
+
+        <!-- ═══════ STEP 4 — Pay & Confirm ═══════ -->
+        <div class="booking-panel" id="panel4">
+            <div class="pay-box" id="payBox">
+                <h3 style="text-align:center;margin-bottom:1.25rem;">Booking Summary</h3>
+
+                <table class="summary-table" id="summaryTable"></table>
+                <div class="summary-total">
+                    <span>Total</span>
+                    <span class="price" id="summaryPrice"></span>
+                </div>
+
+                <div id="paypal-button-container"></div>
+                <p class="pay-note">&#128274; Secure payment via PayPal</p>
+            </div>
+
+            <!-- Shown after successful payment -->
+            <div class="confirm-banner" id="confirmBanner" style="display:none;">
+                <div class="chk">&#10003;</div>
+                <h2>Booking Confirmed!</h2>
+                <p id="confirmMsg"></p>
+                <p style="font-size:.9rem;">A confirmation will appear on your calendar. We look forward to seeing you!</p>
+                <a href="index.html" class="btn btn-primary" style="margin-top:1.5rem;">Back to Home</a>
+            </div>
+
+            <div class="btn-row" id="payBack">
+                <button class="btn btn-secondary" onclick="goStep(3)">&#8592; Back</button>
+                <span></span>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- Contact Info -->
+<section class="section" style="background:var(--color-cream);">
+    <div class="container" style="max-width:800px;">
+        <div class="text-center">
+            <span class="section-label">Other Ways to Reach Us</span>
+            <h2 class="section-title">Contact Information</h2>
+        </div>
+        <div class="contact-alt-grid">
+            <div class="contact-alt-card fade-in">
+                <div class="card-icon">&#9993;</div>
+                <h4 style="margin-bottom:.5rem;">Email</h4>
+                <p style="margin:0;"><a href="mailto:royalcoloranalysis@gmail.com" style="color:var(--color-primary);font-weight:500;">royalcoloranalysis@gmail.com</a></p>
+                <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">We respond within 24 hours</p>
+            </div>
+            <div class="contact-alt-card fade-in">
+                <div class="card-icon">&#128336;</div>
+                <h4 style="margin-bottom:.5rem;">Hours</h4>
+                <p style="margin:0;font-size:.95rem;">Mon – Fri: 9 am – 7 pm</p>
+                <p style="margin:0;font-size:.95rem;">Sat: 10 am – 4 pm</p>
+                <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">By appointment only</p>
+            </div>
+            <div class="contact-alt-card fade-in">
+                <div class="card-icon">&#127760;</div>
+                <h4 style="margin-bottom:.5rem;">Virtual Sessions</h4>
+                <p style="margin:0;font-size:.95rem;">Available via Zoom</p>
+                <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">Clients anywhere in the world</p>
+            </div>
+            <div class="contact-alt-card fade-in">
+                <div class="card-icon">&#127873;</div>
+                <h4 style="margin-bottom:.5rem;">Gift Certificates</h4>
+                <p style="margin:0;font-size:.95rem;">The perfect gift for her</p>
+                <p style="margin:.25rem 0 0;font-size:.85rem;"><a href="mailto:royalcoloranalysis@gmail.com?subject=Gift%20Certificate%20Inquiry" style="color:var(--color-primary);">Inquire by email</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Message -->
+<section class="section">
+    <div class="container" style="max-width:600px;">
+        <div class="text-center">
+            <span class="section-label">Questions?</span>
+            <h2 class="section-title">Send Us a Message</h2>
+            <p style="color:var(--color-text-muted);">Have a question before booking? Drop us a line.</p>
+        </div>
+        <form id="contactForm" onsubmit="return handleContact(event)" style="margin-top:2rem;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="contactName">Your Name *</label>
+                    <input type="text" id="contactName" class="form-input" placeholder="Jane Smith" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="contactEmail">Your Email *</label>
+                    <input type="email" id="contactEmail" class="form-input" placeholder="jane@example.com" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="contactMessage">Message *</label>
+                <textarea id="contactMessage" class="form-textarea" placeholder="What would you like to know?" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Send Message</button>
+        </form>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="section quiz-section">
+    <div class="container">
+        <div class="quiz-inner">
+            <div class="quiz-content">
+                <span class="section-label" style="color:rgba(255,255,255,.7);">Not Sure Which Service?</span>
+                <h2>Take Our Free Color Quiz First</h2>
+                <p>Get a preview of your seasonal color type before booking. It only takes 2 minutes!</p>
+            </div>
+            <a href="quiz.html" class="btn btn-lg" style="background:#fff;color:var(--color-primary);">&#10022; Take the Quiz</a>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="footer-logo"><span>&#9830;</span> Royal Color <span class="logo-sub">Analysis &amp; Styling</span></div>
+                <p>Professional color analysis and personal styling to help you look and feel your absolute best, every day.</p>
+                <div class="footer-social">
+                    <a href="#" aria-label="Instagram">&#9742;</a>
+                    <a href="#" aria-label="Facebook">&#9733;</a>
+                    <a href="#" aria-label="Pinterest">&#9830;</a>
+                </div>
+            </div>
+            <div>
+                <h4>Services</h4>
+                <ul class="footer-links">
+                    <li><a href="services.html">Color Analysis</a></li>
+                    <li><a href="services.html">Style Consultation</a></li>
+                    <li><a href="services.html">Wardrobe Edit</a></li>
+                    <li><a href="services.html">Personal Shopping</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Company</h4>
+                <ul class="footer-links">
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="quiz.html">Color Quiz</a></li>
+                    <li><a href="booking.html">Book Now</a></li>
+                    <li><a href="booking.html">Contact</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:royalcoloranalysis@gmail.com">royalcoloranalysis@gmail.com</a></li>
+                    <li>By appointment only</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 Royal Color Analysis &amp; Styling. All rights reserved.</span>
+            <span>Designed with &#9829; for women who love color</span>
+        </div>
+    </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/main.js"></script>
+<script>
+/* ====================================================================
+   CONFIGURATION — Replace the URL below with your deployed Apps Script
+   ==================================================================== */
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
+var MIN_ADVANCE_DAYS = 2;  // must match Apps Script config (calendar days, not hours)
+
+/* ====================================================================
+   STATE
+   ==================================================================== */
+var S = {
+    svc: null,          // { name, price, dur, icon, label }
+    calYear: null,
+    calMonth: null,     // 1-based
+    availability: {},   // { "2026-03-05": true/false }
+    allSlots: {},       // { "2026-03-05": ["09:00","09:30",…] } — from combined API
+    selDate: null,      // "2026-03-15"
+    selTime: null,      // "10:30"
+    slots: [],
+    paymentDone: false,
+    paypalOrderId: null
+};
+
+/* ====================================================================
+   MONTH CACHE — avoid re-fetching months we've already loaded
+   ==================================================================== */
+var monthCache = {};  // key: "year-month-duration" → { availability, slots }
+
+function monthCacheKey(year, month, dur) {
+    return year + '-' + month + '-' + dur;
+}
+
+var MONTHS = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+
+/* ====================================================================
+   STEP 1 — Service Selection
+   ==================================================================== */
+function pickService(tile) {
+    document.querySelectorAll('.svc-tile').forEach(function(t) { t.classList.remove('selected'); });
+    tile.classList.add('selected');
+    var newDur = parseInt(tile.dataset.dur);
+    var durationChanged = S.svc && S.svc.dur !== newDur;
+    S.svc = {
+        name:  tile.dataset.name,
+        price: tile.dataset.price,
+        dur:   newDur,
+        icon:  tile.dataset.icon,
+        label: tile.dataset.label
+    };
+    // Clear cache if duration changed (availability depends on service duration)
+    if (durationChanged) monthCache = {};
+    document.getElementById('btn1').disabled = false;
+}
+
+/* ====================================================================
+   STEP NAVIGATION
+   ==================================================================== */
+function goStep(n) {
+    // Validation
+    if (n === 2 && !S.svc) return;
+    if (n === 3 && (!S.selDate || !S.selTime)) {
+        showToast('Please select a date and time first.'); return;
+    }
+    if (n === 4) {
+        var name = document.getElementById('cName').value.trim();
+        var email = document.getElementById('cEmail').value.trim();
+        if (!name || !email) { showToast('Please enter your name and email.'); return; }
+    }
+
+    // Hide all panels
+    for (var i = 1; i <= 4; i++) {
+        document.getElementById('panel' + i).classList.remove('active');
+        var ind = document.getElementById('ind' + i);
+        ind.classList.remove('active');
+        ind.classList.remove('completed');
+    }
+    // Mark completed + active
+    for (var j = 1; j < n; j++) document.getElementById('ind' + j).classList.add('completed');
+    document.getElementById('ind' + n).classList.add('active');
+    document.getElementById('panel' + n).classList.add('active');
+
+    // On-enter hooks
+    if (n === 2) enterStep2();
+    if (n === 3) enterStep3();
+    if (n === 4) enterStep4();
+
+    window.scrollTo({ top: document.getElementById('panel' + n).offsetTop - 120, behavior: 'smooth' });
+}
+
+/* ====================================================================
+   STEP 2 — Calendar + Time Slots
+   ==================================================================== */
+function enterStep2() {
+    renderSvcCard('svcCard2');
+    S.selDate = null;
+    S.selTime = null;
+    document.getElementById('btn2').disabled = true;
+    document.getElementById('slotsSection').style.display = 'none';
+
+    var now = new Date();
+    S.calYear  = now.getFullYear();
+    S.calMonth = now.getMonth() + 1;
+    loadMonth();
+}
+
+function renderSvcCard(id) {
+    var el = document.getElementById(id);
+    el.innerHTML =
+        '<div class="sc-icon">' + S.svc.icon + '</div>' +
+        '<div><div class="sc-name">' + S.svc.name + '</div>' +
+        '<div class="sc-meta"><span class="sc-price">$' + S.svc.price + '</span>' +
+        '<span class="sc-dur">' + S.svc.label + '</span></div></div>';
+}
+
+/* --- Month navigation --- */
+function changeMonth(dir) {
+    S.calMonth += dir;
+    if (S.calMonth > 12) { S.calMonth = 1; S.calYear++; }
+    if (S.calMonth < 1)  { S.calMonth = 12; S.calYear--; }
+    S.selDate = null;
+    S.selTime = null;
+    document.getElementById('btn2').disabled = true;
+    document.getElementById('slotsSection').style.display = 'none';
+    loadMonth();
+}
+
+function loadMonth() {
+    document.getElementById('calTitle').textContent = MONTHS[S.calMonth - 1] + ' ' + S.calYear;
+
+    // Check client-side cache first
+    var ck = monthCacheKey(S.calYear, S.calMonth, S.svc.dur);
+    if (monthCache[ck]) {
+        S.availability = monthCache[ck].availability;
+        S.allSlots = monthCache[ck].slots;
+        renderCalendar();
+        prefetchAdjacentMonth();
+        return;
+    }
+
+    document.getElementById('calBody').innerHTML = '<div class="cal-loading">Loading availability&hellip;</div>';
+
+    var url = APPS_SCRIPT_URL +
+        '?action=month&year=' + S.calYear +
+        '&month=' + S.calMonth +
+        '&duration=' + S.svc.dur;
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { document.getElementById('calBody').innerHTML = '<div class="cal-loading" style="color:red;">Error: ' + data.error + '</div>'; return; }
+            S.availability = data.availability || {};
+            S.allSlots = data.slots || {};
+
+            // Store in cache
+            monthCache[ck] = { availability: S.availability, slots: S.allSlots };
+
+            renderCalendar();
+            prefetchAdjacentMonth();
+        })
+        .catch(function(err) {
+            document.getElementById('calBody').innerHTML =
+                '<div class="cal-loading" style="color:red;">Could not load availability.<br><small>' + err.message + '</small></div>';
+        });
+}
+
+/* Pre-fetch next month in the background so navigation feels instant */
+function prefetchAdjacentMonth() {
+    var nextMonth = S.calMonth + 1;
+    var nextYear = S.calYear;
+    if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+
+    var ck = monthCacheKey(nextYear, nextMonth, S.svc.dur);
+    if (monthCache[ck]) return;  // already cached
+
+    var url = APPS_SCRIPT_URL +
+        '?action=month&year=' + nextYear +
+        '&month=' + nextMonth +
+        '&duration=' + S.svc.dur;
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.error) {
+                monthCache[ck] = {
+                    availability: data.availability || {},
+                    slots: data.slots || {}
+                };
+            }
+        })
+        .catch(function() { /* silent — it's just a prefetch */ });
+}
+
+function renderCalendar() {
+    var firstDay = new Date(S.calYear, S.calMonth - 1, 1).getDay();
+    var daysInMonth = new Date(S.calYear, S.calMonth, 0).getDate();
+
+    var html = '<div class="cal-grid">';
+    var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for (var d = 0; d < 7; d++) html += '<div class="cal-dow">' + dow[d] + '</div>';
+
+    // Blanks before day 1
+    for (var b = 0; b < firstDay; b++) html += '<div class="cal-day empty"></div>';
+
+    // 2 calendar days: if today is Mon, earliest bookable is Wed
+    var earliestDate = new Date();
+    earliestDate.setDate(earliestDate.getDate() + MIN_ADVANCE_DAYS);
+    earliestDate.setHours(0,0,0,0);
+
+    for (var day = 1; day <= daysInMonth; day++) {
+        var key = S.calYear + '-' + pad(S.calMonth) + '-' + pad(day);
+        var avail = S.availability[key];
+        var thisDate = new Date(S.calYear, S.calMonth - 1, day);
+        // Client-side: block days less than 2 calendar days away
+        if (thisDate < earliestDate) avail = false;
+        var cls = 'cal-day';
+
+        if (avail === true) {
+            cls += ' available';
+            if (key === S.selDate) cls += ' sel';
+            html += '<div class="' + cls + '" onclick="pickDate(\'' + key + '\')">' + day + '</div>';
+        } else {
+            cls += ' unavail';
+            html += '<div class="' + cls + '">' + day + '</div>';
+        }
+    }
+
+    // Trailing blanks
+    var totalCells = firstDay + daysInMonth;
+    var remainder = totalCells % 7;
+    if (remainder) for (var t = 0; t < 7 - remainder; t++) html += '<div class="cal-day empty"></div>';
+
+    html += '</div>';
+    document.getElementById('calBody').innerHTML = html;
+}
+
+function pickDate(dateStr) {
+    S.selDate = dateStr;
+    S.selTime = null;
+    document.getElementById('btn2').disabled = true;
+    renderCalendar();
+    loadSlots(dateStr);
+}
+
+/* --- Time Slots --- */
+function loadSlots(dateStr) {
+    var sec = document.getElementById('slotsSection');
+    sec.style.display = 'block';
+
+    var parts = dateStr.split('-');
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    document.getElementById('slotDateLabel').textContent =
+        dayNames[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+
+    // If slots were pre-loaded with month data, show instantly
+    if (S.allSlots[dateStr] && S.allSlots[dateStr].length > 0) {
+        S.slots = S.allSlots[dateStr];
+        renderSlots();
+        return;
+    }
+
+    // Fallback: fetch slots separately (if Apps Script hasn't been updated yet)
+    document.getElementById('slotsBody').innerHTML = '<div class="cal-loading">Loading times&hellip;</div>';
+
+    var url = APPS_SCRIPT_URL +
+        '?action=slots&date=' + dateStr +
+        '&duration=' + S.svc.dur;
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            S.slots = data.slots || [];
+            renderSlots();
+        })
+        .catch(function() {
+            document.getElementById('slotsBody').innerHTML =
+                '<div class="slots-empty">Could not load time slots. Please try again.</div>';
+        });
+}
+
+function renderSlots() {
+    if (!S.slots.length) {
+        document.getElementById('slotsBody').innerHTML =
+            '<div class="slots-empty">No available times on this date. Please try another day.</div>';
+        return;
+    }
+    var html = '<div class="slots-grid">';
+    for (var i = 0; i < S.slots.length; i++) {
+        var t = S.slots[i];
+        var cls = 'slot-btn' + (t === S.selTime ? ' sel' : '');
+        html += '<button type="button" class="' + cls + '" onclick="pickTime(\'' + t + '\')">' + fmtTime(t) + '</button>';
+    }
+    html += '</div>';
+    document.getElementById('slotsBody').innerHTML = html;
+}
+
+function pickTime(timeStr) {
+    S.selTime = timeStr;
+    document.getElementById('btn2').disabled = false;
+    renderSlots();
+}
+
+/* ====================================================================
+   STEP 3 — Customer Details
+   ==================================================================== */
+function enterStep3() {
+    renderSvcCard('svcCard3');
+}
+
+/* ====================================================================
+   STEP 4 — Payment
+   ==================================================================== */
+function enterStep4() {
+    var name  = document.getElementById('cName').value.trim();
+    var email = document.getElementById('cEmail').value.trim();
+    var phone = document.getElementById('cPhone').value.trim();
+
+    // Build summary
+    var parts = S.selDate.split('-');
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var dateDisplay = dayNames[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+
+    var rows = [
+        ['Service', S.svc.name],
+        ['Duration', S.svc.label],
+        ['Date', dateDisplay],
+        ['Time', fmtTime(S.selTime)],
+        ['Name', name],
+        ['Email', email]
+    ];
+    if (phone) rows.push(['Phone', phone]);
+
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+        html += '<tr><td>' + rows[i][0] + '</td><td>' + rows[i][1] + '</td></tr>';
+    }
+    document.getElementById('summaryTable').innerHTML = html;
+    document.getElementById('summaryPrice').textContent = '$' + S.svc.price;
+
+    document.getElementById('payBox').style.display = 'block';
+    document.getElementById('confirmBanner').style.display = 'none';
+    document.getElementById('payBack').style.display = 'flex';
+
+    renderPayPal();
+}
+
+function renderPayPal() {
+    var container = document.getElementById('paypal-button-container');
+    container.innerHTML = '';
+
+    if (typeof paypal === 'undefined') {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-muted);">PayPal is loading&hellip;</div>';
+        return;
+    }
+
+    paypal.Buttons({
+        style: { layout:'vertical', color:'gold', shape:'rect', label:'pay', height:50 },
+        createOrder: function(data, actions) {
+            return actions.order.create({
+                purchase_units: [{
+                    description: S.svc.name + ' - Royal Color Analysis & Styling',
+                    amount: { value: S.svc.price }
+                }]
+            });
+        },
+        onApprove: function(data, actions) {
+            return actions.order.capture().then(function(details) {
+                S.paymentDone = true;
+                S.paypalOrderId = data.orderID;
+                showToast('Payment successful! Creating your appointment…', 5000);
+                submitBooking(details.payer.name.given_name);
+            });
+        },
+        onError: function(err) {
+            showToast('Payment error — please try again.', 4000);
+            console.error('PayPal error:', err);
+        },
+        onCancel: function() {
+            showToast('Payment cancelled.', 3000);
+        }
+    }).render('#paypal-button-container');
+}
+
+/* ====================================================================
+   SUBMIT BOOKING TO GOOGLE CALENDAR (via Apps Script)
+   ==================================================================== */
+function submitBooking(payerFirstName) {
+    var payload = {
+        date:          S.selDate,
+        time:          S.selTime,
+        service:       S.svc.name,
+        duration:      S.svc.dur,
+        name:          document.getElementById('cName').value.trim(),
+        email:         document.getElementById('cEmail').value.trim(),
+        phone:         document.getElementById('cPhone').value.trim(),
+        notes:         document.getElementById('cNotes').value.trim(),
+        paypalOrderId: S.paypalOrderId
+    };
+
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },  // Apps Script quirk
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showConfirmation(payerFirstName);
+        } else {
+            showToast('Booking error: ' + (data.error || 'Unknown issue. Please contact us.'), 6000);
+        }
+    })
+    .catch(function(err) {
+        showToast('Could not reach calendar — please contact us to confirm your booking.', 6000);
+        console.error('Booking error:', err);
+        // Still show confirmation since payment went through
+        showConfirmation(payerFirstName);
+    });
+}
+
+function showConfirmation(payerFirstName) {
+    document.getElementById('payBox').style.display = 'none';
+    document.getElementById('payBack').style.display = 'none';
+
+    var parts = S.selDate.split('-');
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var dateDisplay = dayNames[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+
+    document.getElementById('confirmMsg').textContent =
+        'Thank you, ' + payerFirstName + '! Your ' + S.svc.name +
+        ' appointment is booked for ' + dateDisplay + ' at ' + fmtTime(S.selTime) + '.';
+
+    document.getElementById('confirmBanner').style.display = 'block';
+
+    // Mark step 4 complete
+    document.getElementById('ind4').classList.remove('active');
+    document.getElementById('ind4').classList.add('completed');
+}
+
+/* ====================================================================
+   UTILITIES
+   ==================================================================== */
+function pad(n) { return ('0' + n).slice(-2); }
+
+function fmtTime(t) {
+    var p = t.split(':');
+    var h = parseInt(p[0]), m = p[1];
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    return (h % 12 || 12) + ':' + m + ' ' + ampm;
+}
+
+function handleContact(e) {
+    e.preventDefault();
+    var name    = document.getElementById('contactName').value.trim();
+    var email   = document.getElementById('contactEmail').value.trim();
+    var message = document.getElementById('contactMessage').value.trim();
+    if (!name || !email || !message) { showToast('Please fill in all fields.'); return false; }
+
+    var subject = 'Question from ' + name + ' via Royal Color Website';
+    var body    = 'Name: ' + name + '\nEmail: ' + email + '\n\nMessage:\n' + message;
+    window.location.href = 'mailto:royalcoloranalysis@gmail.com?subject=' +
+        encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    showToast('Opening your email client…', 3000);
+    setTimeout(function() { document.getElementById('contactForm').reset(); }, 2000);
+    return false;
+}
+</script>
+</body>
+</html>
