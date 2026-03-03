@@ -253,6 +253,11 @@ function renderQuestion() {
     var content = document.getElementById('quizContent');
     if (!content) return;
 
+    // Track quiz start on first question render
+    if (currentQuestion === 0 && window.rcAnalytics) {
+        window.rcAnalytics.trackEvent('quiz_start');
+    }
+
     var html = '<h3 class="quiz-question">' + q.question + '</h3>';
     html += '<p class="quiz-description">' + q.description + '</p>';
     html += '<div class="quiz-options">';
@@ -373,6 +378,11 @@ function calculateScores() {
 function showResults() {
     var winner = calculateScores();
     var result = seasonResults[winner];
+
+    // Track quiz completion with result
+    if (window.rcAnalytics) {
+        window.rcAnalytics.trackEvent('quiz_complete', winner);
+    }
 
     // Hide quiz card, show result
     document.getElementById('quizCard').style.display = 'none';

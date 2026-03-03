@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Royal Color Analysis &amp; Styling</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <style>
+        /* ── Dashboard Layout ── */
+        .dash-wrap { padding-top: 6rem; min-height: 100vh; }
+        .dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+        .dash-header h1 { font-size: 1.8rem; }
+        .dash-user { display: flex; align-items: center; gap: .75rem; font-size: .9rem; color: var(--color-text-light); }
+        .dash-user .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+        .dash-controls { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: 2rem; }
+        .dash-controls select, .dash-controls button { font-family: var(--font-body); font-size: .88rem; padding: .5rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: #fff; cursor: pointer; transition: var(--transition); }
+        .dash-controls button { background: var(--color-primary); color: #fff; border: none; }
+        .dash-controls button:hover { background: var(--color-primary-dark); }
+
+        /* ── KPI Cards ── */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .kpi-card { background: #fff; border-radius: var(--radius-md); padding: 1.4rem; box-shadow: var(--shadow-sm); text-align: center; }
+        .kpi-card .kpi-value { font-family: var(--font-heading); font-size: 2rem; font-weight: 700; color: var(--color-primary); }
+        .kpi-card .kpi-label { font-size: .85rem; color: var(--color-text-muted); margin-top: .25rem; }
+
+        /* ── Chart Cards ── */
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-card { background: #fff; border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); }
+        .chart-card h3 { font-size: 1.1rem; margin-bottom: 1rem; }
+        .chart-card canvas { max-height: 300px; }
+
+        /* ── Table ── */
+        .dash-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+        .dash-table th, .dash-table td { padding: .65rem 1rem; text-align: left; border-bottom: 1px solid var(--color-border); }
+        .dash-table th { font-weight: 600; color: var(--color-text-muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+        .dash-table tr:last-child td { border-bottom: none; }
+
+        /* ── Auth Screens ── */
+        .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; text-align: center; }
+        .auth-box { background: #fff; border-radius: var(--radius-md); padding: 3rem; box-shadow: var(--shadow-md); max-width: 420px; width: 100%; }
+        .auth-box h2 { margin-bottom: .75rem; }
+        .auth-box p { margin-bottom: 1.5rem; }
+
+        /* ── Loading ── */
+        .dash-loading { text-align: center; padding: 4rem; color: var(--color-text-muted); }
+        .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ── Funnel ── */
+        .funnel-bar { display: flex; align-items: center; gap: .75rem; margin-bottom: .6rem; }
+        .funnel-label { width: 90px; font-size: .85rem; text-align: right; color: var(--color-text-light); }
+        .funnel-track { flex: 1; height: 28px; background: var(--color-border); border-radius: 4px; overflow: hidden; position: relative; }
+        .funnel-fill { height: 100%; background: var(--color-primary); border-radius: 4px; transition: width .6s ease; min-width: 2px; }
+        .funnel-count { font-size: .85rem; width: 40px; font-weight: 600; color: var(--color-text); }
+
+        .logout-link { font-size: .85rem; color: var(--color-text-muted); text-decoration: underline; cursor: pointer; }
+        .logout-link:hover { color: var(--color-primary); }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation (minimal — no nav links, just logo) -->
+    <nav class="navbar scrolled" style="background: var(--color-cream); box-shadow: var(--shadow-sm);">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">
+                <span class="crown">&#9830;</span> Royal Color <span class="logo-sub">Analysis &amp; Styling</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ═══════ AUTH: Checking ═══════ -->
+    <div id="authChecking" class="auth-screen dash-wrap">
+        <div class="auth-box">
+            <div class="spinner"></div>
+            <h2>Checking Access…</h2>
+            <p>Verifying your identity.</p>
+        </div>
+    </div>
+
+    <!-- ═══════ AUTH: Login Needed ═══════ -->
+    <div id="authLogin" class="auth-screen dash-wrap" style="display:none;">
+        <div class="auth-box">
+            <h2>&#128274; Admin Dashboard</h2>
+            <p>Sign in with your Royal Color Microsoft account to view site analytics.</p>
+            <a href="/.auth/login/aad?post_login_redirect_uri=/dashboard.html" class="btn btn-primary" style="display:inline-block;width:100%;">
+                Sign in with Microsoft
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════ AUTH: Access Denied ═══════ -->
+    <div id="authDenied" class="auth-screen dash-wrap" style="display:none;">
+        <div class="auth-box">
+            <h2>&#128683; Access Denied</h2>
+            <p>This dashboard is restricted to Royal Color administrators.</p>
+            <p style="font-size:.85rem;color:var(--color-text-muted);" id="deniedEmail"></p>
+            <a href="/.auth/logout?post_logout_redirect_uri=/dashboard.html" class="btn btn-secondary" style="display:inline-block;width:100%;margin-top:1rem;">
+                Sign in with a different account
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════ DASHBOARD (shown after auth) ═══════ -->
+    <div id="dashMain" class="dash-wrap" style="display:none;">
+        <div class="container">
+            <div class="dash-header">
+                <div>
+                    <h1>&#128202; Analytics Dashboard</h1>
+                </div>
+                <div class="dash-user">
+                    <div class="avatar" id="userAvatar">?</div>
+                    <span id="userName">Loading…</span>
+                    <a href="/.auth/logout?post_logout_redirect_uri=/" class="logout-link">Sign out</a>
+                </div>
+            </div>
+
+            <div class="dash-controls">
+                <select id="dayRange">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="60">Last 60 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+                <button onclick="loadDashboard()">Refresh</button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiViews">—</div>
+                    <div class="kpi-label">Page Views</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiVisitors">—</div>
+                    <div class="kpi-label">Unique Visitors</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiSessions">—</div>
+                    <div class="kpi-label">Sessions</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiBookings">—</div>
+                    <div class="kpi-label">Bookings Completed</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Page Views Over Time</h3>
+                    <canvas id="chartViews"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Top Pages</h3>
+                    <canvas id="chartPages"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Booking Funnel</h3>
+                    <div id="funnelContainer"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Key Events</h3>
+                    <canvas id="chartEvents"></canvas>
+                </div>
+            </div>
+
+            <!-- Tables -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Top Referrers</h3>
+                    <table class="dash-table" id="refTable">
+                        <thead><tr><th>Source</th><th>Visits</th></tr></thead>
+                        <tbody id="refBody"></tbody>
+                    </table>
+                    <p id="refEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No referrer data yet.</p>
+                </div>
+                <div class="chart-card">
+                    <h3>Quiz Results Breakdown</h3>
+                    <canvas id="chartQuiz"></canvas>
+                </div>
+            </div>
+
+            <!-- Loading overlay -->
+            <div id="dashLoading" class="dash-loading" style="display:none;">
+                <div class="spinner"></div>
+                <p>Loading analytics…</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ============================================================================
+   DASHBOARD — Authentication + Data Loading
+   ============================================================================ */
+
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
+
+// Allowed email addresses / domains for dashboard access
+var ALLOWED = [
+    'royalcoloranalysis@gmail.com'
+    // Add more emails or check domain below
+];
+
+// ── Charts (stored globally so we can destroy + rebuild on refresh) ──
+var charts = {};
+
+// ── Auth Check ──
+(function checkAuth() {
+    fetch('/.auth/me')
+        .then(function (r) { return r.json(); })
+        .then(function (authData) {
+            var principal = authData && authData.clientPrincipal;
+            if (!principal) {
+                // Not logged in
+                document.getElementById('authChecking').style.display = 'none';
+                document.getElementById('authLogin').style.display = 'flex';
+                return;
+            }
+
+            var email = (principal.userDetails || '').toLowerCase();
+            var allowed = false;
+
+            // Check exact match
+            for (var i = 0; i < ALLOWED.length; i++) {
+                if (email === ALLOWED[i].toLowerCase()) { allowed = true; break; }
+            }
+
+            // Also allow any @royalcolor.net domain
+            if (!allowed && email.indexOf('@royalcolor.net') !== -1) {
+                allowed = true;
+            }
+
+            if (!allowed) {
+                document.getElementById('authChecking').style.display = 'none';
+                document.getElementById('authDenied').style.display   = 'flex';
+                document.getElementById('deniedEmail').textContent     = 'Signed in as: ' + email;
+                return;
+            }
+
+            // ✅ Authorized
+            document.getElementById('authChecking').style.display = 'none';
+            document.getElementById('dashMain').style.display     = 'block';
+
+            // Show user info
+            var initials = email.charAt(0).toUpperCase();
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('userName').textContent    = email;
+
+            // Load data
+            loadDashboard();
+        })
+        .catch(function () {
+            // /.auth/me not available (local dev or non-SWA host) — show login
+            document.getElementById('authChecking').style.display = 'none';
+            document.getElementById('authLogin').style.display    = 'flex';
+        });
+})();
+
+// ── Load Dashboard Data ──
+function loadDashboard() {
+    var days = parseInt(document.getElementById('dayRange').value);
+    var loading = document.getElementById('dashLoading');
+    loading.style.display = 'block';
+
+    fetch(APPS_SCRIPT_URL + '?action=analytics&days=' + days)
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            loading.style.display = 'none';
+            renderDashboard(d);
+        })
+        .catch(function (err) {
+            loading.style.display = 'none';
+            console.error('Dashboard load error:', err);
+        });
+}
+
+// ── Render All Widgets ──
+function renderDashboard(d) {
+    // KPIs
+    var totalViews = 0;
+    (d.pageviews || []).forEach(function (pv) { totalViews += pv.views; });
+    document.getElementById('kpiViews').textContent    = totalViews.toLocaleString();
+    document.getElementById('kpiVisitors').textContent  = (d.visitors || 0).toLocaleString();
+    document.getElementById('kpiSessions').textContent  = (d.sessions || 0).toLocaleString();
+    document.getElementById('kpiBookings').textContent  = (d.bookingFunnel ? d.bookingFunnel.complete : 0).toLocaleString();
+
+    renderViewsChart(d.pageviews || []);
+    renderPagesChart(d.topPages || []);
+    renderFunnel(d.bookingFunnel || {});
+    renderEventsChart(d.events || []);
+    renderReferrers(d.referrers || []);
+    renderQuizChart(d.events || []);
+}
+
+// ── Page Views Line Chart ──
+function renderViewsChart(data) {
+    if (charts.views) charts.views.destroy();
+    var ctx = document.getElementById('chartViews').getContext('2d');
+    charts.views = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(function (d) { return d.date.substring(5); }),
+            datasets: [{
+                label: 'Page Views',
+                data: data.map(function (d) { return d.views; }),
+                borderColor: '#8B2252',
+                backgroundColor: 'rgba(139, 34, 82, 0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+}
+
+// ── Top Pages Bar Chart ──
+function renderPagesChart(data) {
+    if (charts.pages) charts.pages.destroy();
+    var ctx = document.getElementById('chartPages').getContext('2d');
+    charts.pages = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(function (d) { return d.page || '(unknown)'; }),
+            datasets: [{
+                label: 'Views',
+                data: data.map(function (d) { return d.views; }),
+                backgroundColor: '#B8446E'
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+}
+
+// ── Booking Funnel ──
+function renderFunnel(funnel) {
+    var steps = [
+        { key: 'service',  label: 'Service' },
+        { key: 'datetime', label: 'Date/Time' },
+        { key: 'details',  label: 'Details' },
+        { key: 'payment',  label: 'Payment' },
+        { key: 'complete', label: 'Completed' }
+    ];
+
+    var max = 0;
+    steps.forEach(function (s) { if ((funnel[s.key] || 0) > max) max = funnel[s.key] || 0; });
+    if (max === 0) max = 1;
+
+    var html = '';
+    steps.forEach(function (s) {
+        var count = funnel[s.key] || 0;
+        var pct = Math.round((count / max) * 100);
+        html += '<div class="funnel-bar">';
+        html += '  <div class="funnel-label">' + s.label + '</div>';
+        html += '  <div class="funnel-track"><div class="funnel-fill" style="width:' + pct + '%"></div></div>';
+        html += '  <div class="funnel-count">' + count + '</div>';
+        html += '</div>';
+    });
+
+    document.getElementById('funnelContainer').innerHTML = html;
+}
+
+// ── Key Events Doughnut ──
+function renderEventsChart(events) {
+    if (charts.events) charts.events.destroy();
+
+    // Filter to interesting events only
+    var interesting = events.filter(function (e) {
+        return ['quiz_start', 'quiz_complete', 'booking_step', 'booking_complete', 'mailto_click', 'tel_click'].indexOf(e.event) !== -1;
+    });
+
+    if (interesting.length === 0) {
+        document.getElementById('chartEvents').parentElement.innerHTML += '<p style="color:var(--color-text-muted);font-size:.9rem;text-align:center;">No event data yet.</p>';
+        return;
+    }
+
+    var colors = ['#8B2252', '#B8446E', '#D4A574', '#C9956B', '#5C9EAD', '#7CB342', '#D4763C', '#5B4A8A'];
+    var ctx = document.getElementById('chartEvents').getContext('2d');
+    charts.events = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: interesting.map(function (e) { return e.event.replace(/_/g, ' '); }),
+            datasets: [{
+                data: interesting.map(function (e) { return e.count; }),
+                backgroundColor: colors.slice(0, interesting.length)
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } }
+        }
+    });
+}
+
+// ── Referrers Table ──
+function renderReferrers(refs) {
+    var body = document.getElementById('refBody');
+    body.innerHTML = '';
+    if (refs.length === 0) {
+        document.getElementById('refTable').style.display = 'none';
+        document.getElementById('refEmpty').style.display = 'block';
+        return;
+    }
+    document.getElementById('refTable').style.display = 'table';
+    document.getElementById('refEmpty').style.display = 'none';
+
+    refs.forEach(function (r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + r.source + '</td><td>' + r.count + '</td>';
+        body.appendChild(tr);
+    });
+}
+
+// ── Quiz Results Pie Chart ──
+function renderQuizChart(events) {
+    if (charts.quiz) charts.quiz.destroy();
+    var quizEvents = events.filter(function (e) { return e.event === 'quiz_complete'; });
+
+    // quiz_complete events have the season as data — but aggregated, we can't distinguish.
+    // If we have quiz_complete, show a placeholder note. In future, breakdown by data field.
+    var ctx = document.getElementById('chartQuiz').getContext('2d');
+
+    var quizCount = 0;
+    quizEvents.forEach(function (e) { quizCount += e.count; });
+
+    if (quizCount === 0) {
+        ctx.canvas.parentElement.querySelector('canvas').style.display = 'none';
+        ctx.canvas.parentElement.innerHTML += '<p style="color:var(--color-text-muted);font-size:.9rem;text-align:center;margin-top:2rem;">No quiz completions yet.</p>';
+        return;
+    }
+
+    // Show total quizzes taken (detail breakdown requires per-row data from sheet)
+    charts.quiz = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Quiz Starts', 'Quiz Completions'],
+            datasets: [{
+                data: [
+                    (events.find(function (e) { return e.event === 'quiz_start'; }) || { count: 0 }).count,
+                    quizCount
+                ],
+                backgroundColor: ['#D4A574', '#8B2252']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+}
+</script>
+</body>
+</html>

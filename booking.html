@@ -500,6 +500,12 @@ function goStep(n) {
         if (!name || !email) { showToast('Please enter your name and email.'); return; }
     }
 
+    // Track booking funnel step
+    var stepNames = { 1: 'service', 2: 'datetime', 3: 'details', 4: 'payment' };
+    if (window.rcAnalytics) {
+        window.rcAnalytics.trackEvent('booking_step', stepNames[n] || n);
+    }
+
     // Hide all panels
     for (var i = 1; i <= 4; i++) {
         document.getElementById('panel' + i).classList.remove('active');
@@ -853,6 +859,11 @@ function submitBooking(payerFirstName) {
 }
 
 function showConfirmation(payerFirstName) {
+    // Track booking completion
+    if (window.rcAnalytics) {
+        window.rcAnalytics.trackEvent('booking_complete', S.svc ? S.svc.name : '');
+    }
+
     document.getElementById('payBox').style.display = 'none';
     document.getElementById('payBack').style.display = 'none';
 
@@ -900,5 +911,6 @@ function handleContact(e) {
     return false;
 }
 </script>
+<script src="js/analytics.js"></script>
 </body>
 </html>

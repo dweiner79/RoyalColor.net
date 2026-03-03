@@ -59,7 +59,9 @@ var CONFIG = {
   SLOT_INTERVAL_MINUTES: 30,    // Show slots every 30 min
   BOOKING_WINDOW_DAYS: 60,      // How far ahead clients can book
   MIN_ADVANCE_DAYS: 2,          // Must book at least 2 calendar days in advance
-  CACHE_SECONDS: 300            // Cache calendar data for 5 minutes
+  CACHE_SECONDS: 300,           // Cache calendar data for 5 minutes
+
+  ANALYTICS_SHEET: 'Analytics'  // Google Sheet name for analytics data
 };
 
 // ============ HTTP HANDLERS ============
@@ -80,6 +82,10 @@ function doGet(e) {
         // Kept for backward compatibility but no longer needed
         result = getAvailableSlots(p.date, parseInt(p.duration));
         break;
+      case 'analytics':
+        // Returns aggregated analytics for the dashboard
+        result = getAnalyticsData(p.days ? parseInt(p.days) : 30);
+        break;
       default:
         result = { error: 'Unknown action' };
     }
@@ -95,7 +101,14 @@ function doPost(e) {
   var result;
   try {
     var data = JSON.parse(e.postData.contents);
-    result = createBooking(data);
+
+    if (data.type === 'analytics') {
+      // Analytics beacon — log and return quickly
+      result = logAnalyticsEvent(data);
+    } else {
+      // Booking request
+      result = createBooking(data);
+    }
   } catch (err) {
     result = { error: err.message };
   }
@@ -321,3 +334,173 @@ function createBooking(data) {
 
 // ============ UTILITY ============
 function pad(n) { return ('0' + n).slice(-2); }
+
+// ============ ANALYTICS — LOG EVENTS ============
+
+/**
+ * Ensures the Analytics sheet exists and has headers.
+ * Returns the Sheet object.
+ */
+function getOrCreateAnalyticsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // If no spreadsheet is bound, create one
+  if (!ss) {
+    ss = SpreadsheetApp.create('Royal Color Analytics');
+    PropertiesService.getScriptProperties().setProperty('ANALYTICS_SHEET_ID', ss.getId());
+  }
+
+  var sheet = ss.getSheetByName(CONFIG.ANALYTICS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.ANALYTICS_SHEET);
+    sheet.appendRow([
+      'Timestamp', 'Date', 'Event', 'Page', 'URL', 'Data',
+      'Referrer', 'Screen', 'SessionId', 'VisitorId'
+    ]);
+    sheet.setFrozenRows(1);
+    sheet.getRange('1:1').setFontWeight('bold');
+  }
+  return sheet;
+}
+
+/**
+ * Writes one analytics event row to the sheet.
+ * Called from doPost when data.type === 'analytics'.
+ */
+function logAnalyticsEvent(data) {
+  try {
+    var sheet = getOrCreateAnalyticsSheet();
+    var ts  = data.timestamp || new Date().toISOString();
+    var day = ts.substring(0, 10);  // "2026-03-03"
+
+    sheet.appendRow([
+      ts,
+      day,
+      data.event    || '',
+      data.page     || '',
+      data.url      || '',
+      typeof data.data === 'object' ? JSON.stringify(data.data) : (data.data || ''),
+      data.referrer || '',
+      data.screen   || '',
+      data.sessionId || '',
+      data.visitorId || ''
+    ]);
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// ============ ANALYTICS — READ / AGGREGATE ============
+
+/**
+ * Returns aggregated analytics for the last N days.
+ * Called from doGet with action=analytics&days=30
+ */
+function getAnalyticsData(days) {
+  var sheet;
+  try {
+    sheet = getOrCreateAnalyticsSheet();
+  } catch (e) {
+    return { error: 'Analytics sheet not available: ' + e.message };
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return { pageviews: [], events: [], topPages: [], visitors: 0, sessions: 0 };
+  }
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  cutoff.setHours(0, 0, 0, 0);
+  var cutoffStr = Utilities.formatDate(cutoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  // Accumulators
+  var pvByDay     = {};   // { "2026-03-01": count }
+  var eventCounts = {};   // { "quiz_start": count }
+  var pageCounts  = {};   // { "/index.html": count }
+  var visitors    = {};
+  var sessions    = {};
+  var referrers   = {};
+  var bookingFunnel = { service: 0, datetime: 0, details: 0, payment: 0, complete: 0 };
+
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var day    = (row[1] || '').toString();
+    if (day < cutoffStr) continue;
+
+    var event  = (row[2] || '').toString();
+    var page   = (row[3] || '').toString();
+    var url    = (row[4] || '').toString();
+    var evData = (row[5] || '').toString();
+    var ref    = (row[6] || '').toString();
+    var sid    = (row[8] || '').toString();
+    var vid    = (row[9] || '').toString();
+
+    // Page views by day
+    if (event === 'pageview') {
+      pvByDay[day] = (pvByDay[day] || 0) + 1;
+      pageCounts[url || '/'] = (pageCounts[url || '/'] || 0) + 1;
+    }
+
+    // Event counts
+    if (event && event !== 'pageview' && event !== 'scroll_depth') {
+      eventCounts[event] = (eventCounts[event] || 0) + 1;
+    }
+
+    // Booking funnel
+    if (event === 'booking_step') {
+      if (bookingFunnel.hasOwnProperty(evData)) {
+        bookingFunnel[evData]++;
+      }
+    }
+    if (event === 'booking_complete') {
+      bookingFunnel.complete++;
+    }
+
+    // Unique visitors & sessions
+    if (vid) visitors[vid] = true;
+    if (sid) sessions[sid] = true;
+
+    // Referrers
+    if (ref) {
+      try {
+        var host = ref.replace(/https?:\/\//, '').split('/')[0];
+        if (host && host.indexOf('royalcolor') === -1) {
+          referrers[host] = (referrers[host] || 0) + 1;
+        }
+      } catch (e) {}
+    }
+  }
+
+  // Build sorted arrays
+  var pvArr = [];
+  for (var d in pvByDay) pvArr.push({ date: d, views: pvByDay[d] });
+  pvArr.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+  var topPagesArr = [];
+  for (var p in pageCounts) topPagesArr.push({ page: p, views: pageCounts[p] });
+  topPagesArr.sort(function (a, b) { return b.views - a.views; });
+
+  var evArr = [];
+  for (var ev in eventCounts) evArr.push({ event: ev, count: eventCounts[ev] });
+  evArr.sort(function (a, b) { return b.count - a.count; });
+
+  var refArr = [];
+  for (var r in referrers) refArr.push({ source: r, count: referrers[r] });
+  refArr.sort(function (a, b) { return b.count - a.count; });
+
+  return {
+    pageviews:     pvArr,
+    topPages:      topPagesArr.slice(0, 10),
+    events:        evArr,
+    referrers:     refArr.slice(0, 10),
+    bookingFunnel: bookingFunnel,
+    visitors:      Object.keys(visitors).length,
+    sessions:      Object.keys(sessions).length,
+    days:          days
+  };
+}
