@@ -1,20 +1,5 @@
 {
-  "auth": {
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com/afc1ca18-e5ab-43b8-a863-2dbe195f4fdf/v2.0",
-          "clientIdSettingName": "AAD_CLIENT_ID",
-          "clientSecretSettingName": "AAD_CLIENT_SECRET"
-        }
-      }
-    }
-  },
   "routes": [
-    {
-      "route": "/dashboard.html",
-      "allowedRoles": ["authenticated"]
-    },
     {
       "route": "/.auth/login/github",
       "statusCode": 404
@@ -24,12 +9,6 @@
       "statusCode": 404
     }
   ],
-  "responseOverrides": {
-    "401": {
-      "redirect": "/.auth/login/aad?post_login_redirect_uri=/dashboard.html",
-      "statusCode": 302
-    }
-  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",

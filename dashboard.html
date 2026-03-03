@@ -5,12 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Royal Color Analysis &amp; Styling</title>
     <meta name="robots" content="noindex, nofollow">
-    <script>
-        // Apex domain (royalcolor.net) doesn't support /.auth/* — redirect to www
-        if (location.hostname === 'royalcolor.net') {
-            location.replace('https://www.royalcolor.net' + location.pathname + location.search);
-        }
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -51,6 +45,12 @@
         .auth-box { background: #fff; border-radius: var(--radius-md); padding: 3rem; box-shadow: var(--shadow-md); max-width: 420px; width: 100%; }
         .auth-box h2 { margin-bottom: .75rem; }
         .auth-box p { margin-bottom: 1.5rem; }
+        .auth-box .form-group { margin-bottom: 1rem; text-align: left; }
+        .auth-box label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: var(--color-text-light); }
+        .auth-box input[type="text"],
+        .auth-box input[type="password"] { width: 100%; padding: .65rem .9rem; font-family: var(--font-body); font-size: .95rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-sizing: border-box; }
+        .auth-box input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(139,34,82,.12); }
+        .auth-error { color: #c0392b; font-size: .85rem; margin-top: .5rem; display: none; }
 
         /* ── Loading ── */
         .dash-loading { text-align: center; padding: 4rem; color: var(--color-text-muted); }
@@ -84,35 +84,25 @@
         </div>
     </nav>
 
-    <!-- ═══════ AUTH: Checking ═══════ -->
-    <div id="authChecking" class="auth-screen dash-wrap">
-        <div class="auth-box">
-            <div class="spinner"></div>
-            <h2>Checking Access…</h2>
-            <p>Verifying your identity.</p>
-        </div>
-    </div>
-
-    <!-- ═══════ AUTH: Login Needed ═══════ -->
-    <div id="authLogin" class="auth-screen dash-wrap" style="display:none;">
+    <!-- ═══════ AUTH: Login Form ═══════ -->
+    <div id="authLogin" class="auth-screen dash-wrap">
         <div class="auth-box">
             <h2>&#128274; Admin Dashboard</h2>
-            <p>Sign in with your Royal Color Microsoft account to view site analytics.</p>
-            <a href="/.auth/login/aad?post_login_redirect_uri=/dashboard.html" class="btn btn-primary" style="display:inline-block;width:100%;">
-                Sign in with Microsoft
-            </a>
-        </div>
-    </div>
-
-    <!-- ═══════ AUTH: Access Denied ═══════ -->
-    <div id="authDenied" class="auth-screen dash-wrap" style="display:none;">
-        <div class="auth-box">
-            <h2>&#128683; Access Denied</h2>
-            <p>This dashboard is restricted to Royal Color administrators.</p>
-            <p style="font-size:.85rem;color:var(--color-text-muted);" id="deniedEmail"></p>
-            <a href="/.auth/logout?post_logout_redirect_uri=/dashboard.html" class="btn btn-secondary" style="display:inline-block;width:100%;margin-top:1rem;">
-                Sign in with a different account
-            </a>
+            <p>Enter your credentials to view site analytics.</p>
+            <form id="loginForm" onsubmit="return handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginUser">Username</label>
+                    <input type="text" id="loginUser" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPass">Password</label>
+                    <input type="password" id="loginPass" autocomplete="current-password" required>
+                </div>
+                <p class="auth-error" id="loginError">Invalid username or password.</p>
+                <button type="submit" class="btn btn-primary" style="display:inline-block;width:100%;margin-top:.5rem;">
+                    Sign In
+                </button>
+            </form>
         </div>
     </div>
 
@@ -124,9 +114,9 @@
                     <h1>&#128202; Analytics Dashboard</h1>
                 </div>
                 <div class="dash-user">
-                    <div class="avatar" id="userAvatar">?</div>
-                    <span id="userName">Loading…</span>
-                    <a href="/.auth/logout?post_logout_redirect_uri=/" class="logout-link">Sign out</a>
+                    <div class="avatar">A</div>
+                    <span>Admin</span>
+                    <a class="logout-link" onclick="handleLogout()">Sign out</a>
                 </div>
             </div>
 
@@ -211,65 +201,45 @@
 
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
 
-// Allowed email addresses / domains for dashboard access
-var ALLOWED = [
-    'royalcoloranalysis@gmail.com'
-    // Add more emails or check domain below
-];
-
 // ── Charts (stored globally so we can destroy + rebuild on refresh) ──
 var charts = {};
 
-// ── Auth Check ──
-(function checkAuth() {
-    fetch('/.auth/me')
-        .then(function (r) { return r.json(); })
-        .then(function (authData) {
-            var principal = authData && authData.clientPrincipal;
-            if (!principal) {
-                // Not logged in
-                document.getElementById('authChecking').style.display = 'none';
-                document.getElementById('authLogin').style.display = 'flex';
-                return;
-            }
+// ── Simple Auth ──
+// Credentials are checked client-side; this is a basic admin gate, not a security boundary.
+var ADMIN_USER = 'Admin';
+var ADMIN_PASS = 'Password!';
 
-            var email = (principal.userDetails || '').toLowerCase();
-            var allowed = false;
+function handleLogin(e) {
+    e.preventDefault();
+    var user = document.getElementById('loginUser').value;
+    var pass = document.getElementById('loginPass').value;
+    var err  = document.getElementById('loginError');
 
-            // Check exact match
-            for (var i = 0; i < ALLOWED.length; i++) {
-                if (email === ALLOWED[i].toLowerCase()) { allowed = true; break; }
-            }
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+        sessionStorage.setItem('rc_dash_auth', '1');
+        showDashboard();
+    } else {
+        err.style.display = 'block';
+    }
+    return false;
+}
 
-            // Also allow any @royalcolor.net domain
-            if (!allowed && email.indexOf('@royalcolor.net') !== -1) {
-                allowed = true;
-            }
+function handleLogout() {
+    sessionStorage.removeItem('rc_dash_auth');
+    location.reload();
+}
 
-            if (!allowed) {
-                document.getElementById('authChecking').style.display = 'none';
-                document.getElementById('authDenied').style.display   = 'flex';
-                document.getElementById('deniedEmail').textContent     = 'Signed in as: ' + email;
-                return;
-            }
+function showDashboard() {
+    document.getElementById('authLogin').style.display = 'none';
+    document.getElementById('dashMain').style.display  = 'block';
+    loadDashboard();
+}
 
-            // ✅ Authorized
-            document.getElementById('authChecking').style.display = 'none';
-            document.getElementById('dashMain').style.display     = 'block';
-
-            // Show user info
-            var initials = email.charAt(0).toUpperCase();
-            document.getElementById('userAvatar').textContent = initials;
-            document.getElementById('userName').textContent    = email;
-
-            // Load data
-            loadDashboard();
-        })
-        .catch(function () {
-            // /.auth/me not available (local dev or non-SWA host) — show login
-            document.getElementById('authChecking').style.display = 'none';
-            document.getElementById('authLogin').style.display    = 'flex';
-        });
+// On page load — check session
+(function checkSession() {
+    if (sessionStorage.getItem('rc_dash_auth') === '1') {
+        showDashboard();
+    }
 })();
 
 // ── Load Dashboard Data ──
