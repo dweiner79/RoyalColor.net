@@ -200,7 +200,7 @@ ul { list-style: none; }
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid transparent;
     transition: var(--transition);
-    padding: 1rem 0;
+    padding: 0.5rem 0;
 }
 
 .navbar.scrolled {
@@ -243,11 +243,11 @@ ul { list-style: none; }
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: 2.5rem;
 }
 
 .nav-links a {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     font-weight: 500;
     color: var(--color-text);
     text-decoration: none;
