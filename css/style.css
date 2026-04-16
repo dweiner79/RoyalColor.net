@@ -5,19 +5,19 @@
 
 /* ---------- CSS Variables ---------- */
 :root {
-    --color-primary: #8B2252;
-    --color-primary-light: #B8446E;
-    --color-primary-dark: #6B1A3F;
-    --color-secondary: #D4A574;
-    --color-secondary-light: #E8C9A8;
-    --color-accent: #C9956B;
-    --color-gold: #C8A96E;
-    --color-cream: #FDF8F3;
-    --color-warm-white: #FFFBF7;
-    --color-text: #2D2428;
-    --color-text-light: #6B5B62;
-    --color-text-muted: #9B8B92;
-    --color-border: #E8DDD5;
+    --color-primary: #6B35A8;
+    --color-primary-light: #8B55C8;
+    --color-primary-dark: #4E2480;
+    --color-secondary: #C4963E;
+    --color-secondary-light: #E8C97A;
+    --color-accent: #B8860B;
+    --color-gold: #C4963E;
+    --color-cream: #FAF7FD;
+    --color-warm-white: #FDF9FF;
+    --color-text: #1E1428;
+    --color-text-light: #5B4B72;
+    --color-text-muted: #9B8BB2;
+    --color-border: #E2D5F0;
     --color-spring: #7CB342;
     --color-summer: #5C9EAD;
     --color-autumn: #D4763C;

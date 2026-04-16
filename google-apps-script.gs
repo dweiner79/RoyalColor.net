@@ -46,18 +46,18 @@ var CONFIG = {
   // Business hours per day-of-week (0 = Sunday … 6 = Saturday)
   // Omit a day or set to null to mark it as closed.
   BUSINESS_HOURS: {
-    1: { start: 9, end: 19 },   // Monday    9 am – 7 pm
-    2: { start: 9, end: 19 },   // Tuesday
-    3: { start: 9, end: 19 },   // Wednesday
-    4: { start: 9, end: 19 },   // Thursday
-    5: { start: 9, end: 19 },   // Friday
-    6: { start: 10, end: 16 }   // Saturday  10 am – 4 pm
+    1: { start: 9, end: 14 },   // Monday    9 am – 2 pm
+    2: { start: 9, end: 14 },   // Tuesday
+    3: { start: 9, end: 14 },   // Wednesday
+    4: { start: 9, end: 14 },   // Thursday
+    5: { start: 9, end: 14 },   // Friday
+    6: { start: 10, end: 14 }   // Saturday  10 am – 2 pm
     // 0 (Sunday) — closed
   },
 
   BUFFER_MINUTES: 60,           // Block 1 hr before & after each appointment
   SLOT_INTERVAL_MINUTES: 30,    // Show slots every 30 min
-  BOOKING_WINDOW_DAYS: 60,      // How far ahead clients can book
+  BOOKING_WINDOW_DAYS: 90,      // How far ahead clients can book
   MIN_ADVANCE_DAYS: 2,          // Must book at least 2 calendar days in advance
   CACHE_SECONDS: 300,           // Cache calendar data for 5 minutes
 
