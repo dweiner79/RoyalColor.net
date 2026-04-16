@@ -208,12 +208,11 @@ function getMonthWithSlots(year, month, durationMin) {
     if (!hours) { availability[key] = false; continue; }
 
     var daySlots = [];
-    for (var h = hours.start; h < hours.end; h++) {
+    for (var h = hours.start; h <= hours.end; h++) {
       for (var m = 0; m < 60; m += CONFIG.SLOT_INTERVAL_MINUTES) {
         var st  = new Date(year, month - 1, d, h, m, 0);
         if (st < earliest) continue;
-        var end = new Date(st.getTime() + durationMin * 60000);
-        if (end > new Date(year, month - 1, d, hours.end, 0, 0)) continue;
+        if (st > new Date(year, month - 1, d, hours.end, 0, 0)) continue;
         if (isSlotFree(st.getTime(), durationMin, busy)) {
           daySlots.push(pad(h) + ':' + pad(m));
         }
@@ -245,12 +244,11 @@ function getAvailableSlots(dateStr, durationMin) {
   earliest.setHours(0, 0, 0, 0);
 
   var slots = [];
-  for (var h = hours.start; h < hours.end; h++) {
+  for (var h = hours.start; h <= hours.end; h++) {
     for (var m = 0; m < 60; m += CONFIG.SLOT_INTERVAL_MINUTES) {
       var st  = new Date(year, month, day, h, m, 0);
       if (st < earliest) continue;
-      var end = new Date(st.getTime() + durationMin * 60000);
-      if (end > new Date(year, month, day, hours.end, 0, 0)) continue;
+      if (st > new Date(year, month, day, hours.end, 0, 0)) continue;
       if (isSlotFree(st.getTime(), durationMin, busy)) {
         slots.push(pad(h) + ':' + pad(m));
       }
