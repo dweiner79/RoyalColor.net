@@ -743,53 +743,6 @@ function enterStep4() {
     document.getElementById('confirmBanner').style.display = 'none';
     document.getElementById('payBack').style.display = 'flex';
 }
-    document.getElementById('summaryTable').innerHTML = html;
-    document.getElementById('summaryPrice').textContent = '$' + S.svc.price;
-
-    document.getElementById('payBox').style.display = 'block';
-    document.getElementById('confirmBanner').style.display = 'none';
-    document.getElementById('payBack').style.display = 'flex';
-
-    renderPayPal();
-}
-
-function renderPayPal() {
-    var container = document.getElementById('paypal-button-container');
-    container.innerHTML = '';
-
-    if (typeof paypal === 'undefined') {
-        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-muted);">PayPal is loading&hellip;</div>';
-        return;
-    }
-
-    paypal.Buttons({
-        style: { layout:'vertical', color:'gold', shape:'rect', label:'pay', height:50 },
-        createOrder: function(data, actions) {
-            return actions.order.create({
-                purchase_units: [{
-                    description: S.svc.name + ' - Royal Color Analysis & Styling',
-                    amount: { value: S.svc.price }
-                }]
-            });
-        },
-        onApprove: function(data, actions) {
-            return actions.order.capture().then(function(details) {
-                S.paymentDone = true;
-                S.paypalOrderId = data.orderID;
-                showToast('Payment successful! Creating your appointment…', 5000);
-                submitBooking(details.payer.name.given_name);
-            });
-        },
-        onError: function(err) {
-            showToast('Payment error — please try again.', 4000);
-            console.error('PayPal error:', err);
-        },
-        onCancel: function() {
-            showToast('Payment cancelled.', 3000);
-        }
-    }).render('#paypal-button-container');
-}
-
 /* ====================================================================
    SUBMIT BOOKING TO GOOGLE CALENDAR (via Apps Script)
    ==================================================================== */
