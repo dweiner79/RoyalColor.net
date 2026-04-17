@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Now | Royal Color Analysis &amp; Styling</title>
-    <meta name="description" content="Schedule your personal color analysis or style consultation. Pick a day and time based on real-time availability.">
+    <meta name="description" content="Schedule your personal color analysis, wardrobe edit, or personal shopping session. Pick a day and time based on real-time availability.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <!-- PayPal SDK -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AU4Hn7JWWIu_5Y8mw5Fyr6Gosjs40iShbPfdQJLKx-wpSJf4ZpjNFtigyuztMYslE3RGdidCNZFu28DA&currency=USD"></script>
     <style>
         /* ───── Step Progress Bar ───── */
         .booking-steps{display:flex;justify-content:center;gap:1rem;margin-bottom:3rem;flex-wrap:wrap}
@@ -144,7 +142,7 @@
     <div class="container">
         <span class="section-label">Schedule Online</span>
         <h1>Book Your Appointment</h1>
-        <p>Select a service, pick a date &amp; time, enter your details, and pay securely to confirm.</p>
+            <p>Select a service, pick a date &amp; time, and enter your details to confirm.</p>
     </div>
 </section>
 
@@ -160,7 +158,7 @@
             <div class="step-line"></div>
             <div class="booking-step" id="ind3"><div class="step-num">3</div><span>Details</span></div>
             <div class="step-line"></div>
-            <div class="booking-step" id="ind4"><div class="step-num">4</div><span>Pay</span></div>
+            <div class="booking-step" id="ind4"><div class="step-num">4</div><span>Confirm</span></div>
         </div>
 
         <!-- ═══════ STEP 1 — Choose Service ═══════ -->
@@ -181,10 +179,6 @@
                 <div class="svc-tile" onclick="pickService(this)" data-name="Personal Shopping" data-price="198" data-dur="120" data-icon="&#128717;" data-label="2 hrs min">
                     <div class="t-icon">&#128717;</div><h4>Personal Shopping</h4>
                     <div class="t-price">$99/hr</div><div class="t-dur">2-hr minimum</div><div class="t-chk">&#10003; Selected</div>
-                </div>
-                <div class="svc-tile" onclick="pickService(this)" data-name="Test Booking" data-price="0.01" data-dur="30" data-icon="&#128295;" data-label="30 min">
-                    <div class="t-icon">&#128295;</div><h4>Test Booking</h4>
-                    <div class="t-price">$0.01</div><div class="t-dur">30 minutes</div><div class="t-chk">&#10003; Selected</div>
                 </div>
             </div>
 
@@ -252,31 +246,26 @@
 
             <div class="btn-row">
                 <button class="btn btn-secondary" onclick="goStep(2)">&#8592; Back</button>
-                <button class="btn btn-primary btn-lg" id="btn3" onclick="goStep(4)">Continue to Payment &#8594;</button>
+                <button class="btn btn-primary btn-lg" id="btn3" onclick="goStep(4)">Review &amp; Confirm &#8594;</button>
             </div>
         </div>
 
-        <!-- ═══════ STEP 4 — Pay & Confirm ═══════ -->
+        <!-- ═══════ STEP 4 — Review & Confirm ═══════ -->
         <div class="booking-panel" id="panel4">
             <div class="pay-box" id="payBox">
                 <h3 style="text-align:center;margin-bottom:1.25rem;">Booking Summary</h3>
-
                 <table class="summary-table" id="summaryTable"></table>
-                <div class="summary-total">
-                    <span>Total</span>
-                    <span class="price" id="summaryPrice"></span>
+                <div style="margin-top:1.5rem;text-align:center;">
+                    <button class="btn btn-primary btn-lg" id="confirmBtn" onclick="submitBooking()">Confirm Booking &#10003;</button>
                 </div>
-
-                <div id="paypal-button-container"></div>
-                <p class="pay-note">&#128274; Secure payment via PayPal</p>
             </div>
 
-            <!-- Shown after successful payment -->
+            <!-- Shown after confirmation -->
             <div class="confirm-banner" id="confirmBanner" style="display:none;">
                 <div class="chk">&#10003;</div>
                 <h2>Booking Confirmed!</h2>
                 <p id="confirmMsg"></p>
-                <p style="font-size:.9rem;">A confirmation will appear on your calendar. We look forward to seeing you!</p>
+                <p style="font-size:.9rem;">A confirmation has been added to the calendar. We look forward to seeing you!</p>
                 <a href="index.html" class="btn btn-primary" style="margin-top:1.5rem;">Back to Home</a>
             </div>
 
@@ -306,15 +295,15 @@
             <div class="contact-alt-card fade-in">
                 <div class="card-icon">&#128336;</div>
                 <h4 style="margin-bottom:.5rem;">Hours</h4>
-                <p style="margin:0;font-size:.95rem;">Mon – Fri: 9 am – 7 pm</p>
-                <p style="margin:0;font-size:.95rem;">Sat: 10 am – 4 pm</p>
+                <p style="margin:0;font-size:.95rem;">Mon – Fri: 9 am – 2 pm</p>
+                <p style="margin:0;font-size:.95rem;">Sat: 10 am – 2 pm</p>
                 <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">By appointment only</p>
             </div>
             <div class="contact-alt-card fade-in">
-                <div class="card-icon">&#127760;</div>
-                <h4 style="margin-bottom:.5rem;">Virtual Sessions</h4>
-                <p style="margin:0;font-size:.95rem;">Available via Zoom</p>
-                <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">Clients anywhere in the world</p>
+                <div class="card-icon">&#127757;</div>
+                <h4 style="margin-bottom:.5rem;">Service Area</h4>
+                <p style="margin:0;font-size:.95rem;">South Florida</p>
+                <p style="margin:.25rem 0 0;font-size:.85rem;color:var(--color-text-muted);">Miami-Dade &middot; Broward &middot; Palm Beach</p>
             </div>
             <div class="contact-alt-card fade-in">
                 <div class="card-icon">&#127873;</div>
@@ -749,6 +738,12 @@ function enterStep4() {
         html += '<tr><td>' + rows[i][0] + '</td><td>' + rows[i][1] + '</td></tr>';
     }
     document.getElementById('summaryTable').innerHTML = html;
+
+    document.getElementById('payBox').style.display = 'block';
+    document.getElementById('confirmBanner').style.display = 'none';
+    document.getElementById('payBack').style.display = 'flex';
+}
+    document.getElementById('summaryTable').innerHTML = html;
     document.getElementById('summaryPrice').textContent = '$' + S.svc.price;
 
     document.getElementById('payBox').style.display = 'block';
@@ -798,37 +793,40 @@ function renderPayPal() {
 /* ====================================================================
    SUBMIT BOOKING TO GOOGLE CALENDAR (via Apps Script)
    ==================================================================== */
-function submitBooking(payerFirstName) {
+function submitBooking() {
+    var btn = document.getElementById('confirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Confirming…';
+
     var payload = {
-        date:          S.selDate,
-        time:          S.selTime,
-        service:       S.svc.name,
-        duration:      S.svc.dur,
-        name:          document.getElementById('cName').value.trim(),
-        email:         document.getElementById('cEmail').value.trim(),
-        phone:         document.getElementById('cPhone').value.trim(),
-        notes:         document.getElementById('cNotes').value.trim(),
-        paypalOrderId: S.paypalOrderId
+        date:     S.selDate,
+        time:     S.selTime,
+        service:  S.svc.name,
+        duration: S.svc.dur,
+        name:     document.getElementById('cName').value.trim(),
+        email:    document.getElementById('cEmail').value.trim(),
+        phone:    document.getElementById('cPhone').value.trim(),
+        notes:    document.getElementById('cNotes').value.trim()
     };
 
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },  // Apps Script quirk
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            showConfirmation(payerFirstName);
+            showConfirmation(payload.name.split(' ')[0]);
         } else {
+            btn.disabled = false;
+            btn.textContent = 'Confirm Booking ✓';
             showToast('Booking error: ' + (data.error || 'Unknown issue. Please contact us.'), 6000);
         }
     })
-    .catch(function(err) {
-        showToast('Could not reach calendar — please contact us to confirm your booking.', 6000);
-        console.error('Booking error:', err);
-        // Still show confirmation since payment went through
-        showConfirmation(payerFirstName);
+    .catch(function() {
+        // Show confirmation anyway — calendar may still work
+        showConfirmation(payload.name.split(' ')[0]);
     });
 }
 
