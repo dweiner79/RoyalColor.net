@@ -836,6 +836,22 @@ function handleContact(e) {
     setTimeout(function() { document.getElementById('contactForm').reset(); }, 2000);
     return false;
 }
+
+// ── Phone number auto-formatter ──────────────────────────────────────
+document.getElementById('cPhone').addEventListener('input', function(e) {
+    var digits = this.value.replace(/\D/g, '').substring(0, 10);
+    var formatted = '';
+    if (digits.length === 0) {
+        formatted = '';
+    } else if (digits.length <= 3) {
+        formatted = '(' + digits;
+    } else if (digits.length <= 6) {
+        formatted = '(' + digits.substring(0, 3) + ') ' + digits.substring(3);
+    } else {
+        formatted = '(' + digits.substring(0, 3) + ') ' + digits.substring(3, 6) + '-' + digits.substring(6);
+    }
+    this.value = formatted;
+});
 </script>
 <script src="js/analytics.js"></script>
 </body>
