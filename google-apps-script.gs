@@ -55,7 +55,7 @@ var CONFIG = {
     // 0 (Sunday) — closed
   },
 
-  BUFFER_MINUTES: 60,           // Block 1 hr before & after each appointment
+  BUFFER_MINUTES: 30,           // 30 min travel block before & after each appointment
   SLOT_INTERVAL_MINUTES: 30,    // Show slots every 30 min
   BOOKING_WINDOW_DAYS: 90,      // How far ahead clients can book
   MIN_ADVANCE_DAYS: 2,          // Must book at least 2 calendar days in advance
@@ -290,17 +290,17 @@ function createBooking(data) {
 
   var cal = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
 
-  // 1️⃣ Buffer BEFORE
+  // 1️⃣ Travel block BEFORE
   cal.createEvent(
-    '\u23F3 Prep Buffer - ' + data.service,
+    '🚗 Travel — ' + data.service + ' (' + data.name + ')',
     new Date(startTime.getTime() - bufMs),
     startTime,
-    { description: 'Preparation buffer before ' + data.service + ' with ' + data.name }
+    { description: 'Travel time before ' + data.service + ' with ' + data.name }
   );
 
   // 2️⃣ Main appointment
   cal.createEvent(
-    data.service + ' \u2014 ' + data.name,
+    data.service + ' — ' + data.name,
     startTime,
     endTime,
     {
@@ -311,17 +311,16 @@ function createBooking(data) {
         'Phone: '   + (data.phone || 'Not provided') + '\n' +
         'Notes: '   + (data.notes || 'None') + '\n' +
         '---\n' +
-        'PayPal Order: ' + (data.paypalOrderId || 'N/A') + '\n' +
         'Booked via website on ' + new Date().toLocaleString()
     }
   );
 
-  // 3️⃣ Buffer AFTER
+  // 3️⃣ Travel block AFTER
   cal.createEvent(
-    '\u23F3 Follow-up Buffer - ' + data.service,
+    '🚗 Travel — after ' + data.service + ' (' + data.name + ')',
     endTime,
     new Date(endTime.getTime() + bufMs),
-    { description: 'Follow-up buffer after ' + data.service + ' with ' + data.name }
+    { description: 'Travel time after ' + data.service + ' with ' + data.name }
   );
 
   // 4️⃣ Email notification to Daphna
