@@ -234,8 +234,8 @@
                 </div>
                 <div class="form-row2">
                     <div class="fg">
-                        <label for="cPhone">Phone Number</label>
-                        <input type="tel" id="cPhone" placeholder="Optional">
+                        <label for="cPhone">Phone Number *</label>
+                        <input type="tel" id="cPhone" placeholder="(555) 123-4567" required>
                     </div>
                     <div class="fg">
                         <label for="cNotes">Notes / Questions</label>
@@ -460,7 +460,8 @@ function goStep(n) {
     if (n === 4) {
         var name = document.getElementById('cName').value.trim();
         var email = document.getElementById('cEmail').value.trim();
-        if (!name || !email) { showToast('Please enter your name and email.'); return; }
+        var phone = document.getElementById('cPhone').value.trim();
+        if (!name || !email || !phone) { showToast('Please enter your name, email, and phone number.'); return; }
     }
 
     // Track booking funnel step
