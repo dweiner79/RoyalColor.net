@@ -324,6 +324,28 @@ function createBooking(data) {
     { description: 'Follow-up buffer after ' + data.service + ' with ' + data.name }
   );
 
+  // 4️⃣ Email notification to Daphna
+  try {
+    var emailBody =
+      'New Booking Received!\n\n' +
+      'Service:  ' + data.service + '\n' +
+      'Date:     ' + data.date + '\n' +
+      'Time:     ' + data.time + '\n' +
+      'Duration: ' + data.duration + ' min\n\n' +
+      'Client Details:\n' +
+      'Name:     ' + data.name + '\n' +
+      'Email:    ' + data.email + '\n' +
+      'Phone:    ' + (data.phone || 'Not provided') + '\n' +
+      'Notes:    ' + (data.notes || 'None') + '\n\n' +
+      'The appointment has been added to your Google Calendar.';
+
+    GmailApp.sendEmail(
+      CONFIG.CALENDAR_ID,
+      '📅 New Booking: ' + data.service + ' — ' + data.name,
+      emailBody
+    );
+  } catch (e) { /* email failure should not block booking confirmation */ }
+
   return {
     success: true,
     message: 'Booking confirmed! ' + data.service + ' on ' + data.date + ' at ' + data.time
