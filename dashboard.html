@@ -288,8 +288,11 @@ function loadDashboard() {
 // ── Helpers ───────────────────────────────────────────────────────────────
 var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function fmtDate(dateStr) {
-    var p = dateStr.split('-');
-    return MONTHS_SHORT[parseInt(p[1]) - 1] + ' ' + parseInt(p[2]);
+    if (!dateStr) return '';
+    var p = dateStr.toString().split('-');
+    if (p.length < 3) return dateStr;
+    var month = MONTHS_SHORT[parseInt(p[1]) - 1];
+    return month ? month + ' ' + parseInt(p[2]) : dateStr;
 }
 function fmtTime(seconds) {
     if (!seconds || seconds === 0) return '—';
@@ -325,7 +328,11 @@ function renderDashboard(d) {
 }
 
 // ── Page Views Line Chart ─────────────────────────────────────────────────
-function renderViewsChart(data) {
+function renderViewsChart(rawData) {
+    // Sort oldest → newest
+    var data = (rawData || []).filter(function(d) { return d && d.date; });
+    data.sort(function(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+
     if (charts.views) charts.views.destroy();
     var ctx = document.getElementById('chartViews').getContext('2d');
     charts.views = new Chart(ctx, {
