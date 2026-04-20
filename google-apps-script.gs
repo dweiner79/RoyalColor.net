@@ -361,10 +361,11 @@ function pad(n) { return ('0' + n).slice(-2); }
  * Returns the Sheet object.
  */
 function getOrCreateAnalyticsSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // If no spreadsheet is bound, create one
-  if (!ss) {
+  var sheetId = PropertiesService.getScriptProperties().getProperty('ANALYTICS_SHEET_ID');
+  var ss;
+  if (sheetId) {
+    ss = SpreadsheetApp.openById(sheetId);
+  } else {
     ss = SpreadsheetApp.create('Royal Color Analytics');
     PropertiesService.getScriptProperties().setProperty('ANALYTICS_SHEET_ID', ss.getId());
   }
