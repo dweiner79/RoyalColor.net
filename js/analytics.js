@@ -78,17 +78,33 @@
             q2.forEach(function(fn) { fn(geoData); });
             return;
         }
+        function flushGeoQueue() {
+            var q3 = geoQueue.slice(); geoQueue = [];
+            q3.forEach(function(fn) { fn(geoData); });
+        }
+        function tryFallbackGeo() {
+            fetch('https://ipapi.co/json/')
+                .then(function(r) { return r.json(); })
+                .then(function(j) {
+                    geoData = { ip: j.ip||'', city: j.city||'', region: j.region||'', country: j.country_name||'' };
+                    sessionStorage.setItem('rc_geo', JSON.stringify(geoData));
+                })
+                .catch(function() { geoData = { ip:'', city:'', region:'', country:'' }; })
+                .then(flushGeoQueue);
+        }
         fetch('https://ipwho.is/')
             .then(function(r) { return r.json(); })
             .then(function(j) {
+                if (j.success === false || !j.city) {
+                    // Primary geo API returned no city — try fallback
+                    tryFallbackGeo();
+                    return;
+                }
                 geoData = { ip: j.ip||'', city: j.city||'', region: j.region||'', country: j.country||'' };
                 sessionStorage.setItem('rc_geo', JSON.stringify(geoData));
+                flushGeoQueue();
             })
-            .catch(function() { geoData = { ip:'', city:'', region:'', country:'' }; })
-            .then(function() {
-                var q3 = geoQueue.slice(); geoQueue = [];
-                q3.forEach(function(fn) { fn(geoData); });
-            });
+            .catch(function() { tryFallbackGeo(); });
     }
 
     var utm = getUTM();
