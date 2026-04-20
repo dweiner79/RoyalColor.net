@@ -71,6 +71,8 @@
 
         .logout-link { font-size: .85rem; color: var(--color-text-muted); text-decoration: underline; cursor: pointer; }
         .logout-link:hover { color: var(--color-primary); }
+        .chart-full { grid-column: 1 / -1; }
+        .chart-card canvas { max-height: 320px; }
     </style>
 </head>
 <body>
@@ -148,18 +150,34 @@
                     <div class="kpi-value" id="kpiBookings">—</div>
                     <div class="kpi-label">Bookings Completed</div>
                 </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiAvgTime">—</div>
+                    <div class="kpi-label">Avg. Time on Page</div>
+                </div>
             </div>
 
-            <!-- Charts -->
+            <!-- Row 1: Page Views (full width) -->
             <div class="chart-grid">
-                <div class="chart-card">
+                <div class="chart-card chart-full">
                     <h3>Page Views Over Time</h3>
                     <canvas id="chartViews"></canvas>
                 </div>
+            </div>
+
+            <!-- Row 2: Top Pages + Device Type -->
+            <div class="chart-grid">
                 <div class="chart-card">
                     <h3>Top Pages</h3>
                     <canvas id="chartPages"></canvas>
                 </div>
+                <div class="chart-card">
+                    <h3>Device Type</h3>
+                    <canvas id="chartDevices"></canvas>
+                </div>
+            </div>
+
+            <!-- Row 3: Booking Funnel + Key Events -->
+            <div class="chart-grid">
                 <div class="chart-card">
                     <h3>Booking Funnel</h3>
                     <div id="funnelContainer"></div>
@@ -170,7 +188,7 @@
                 </div>
             </div>
 
-            <!-- Tables -->
+            <!-- Row 4: Referrers + UTM Sources -->
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>Top Referrers</h3>
@@ -181,8 +199,25 @@
                     <p id="refEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No referrer data yet.</p>
                 </div>
                 <div class="chart-card">
-                    <h3>Quiz Results Breakdown</h3>
-                    <canvas id="chartQuiz"></canvas>
+                    <h3>UTM Sources</h3>
+                    <canvas id="chartUTM"></canvas>
+                    <p id="utmEmpty" style="color:var(--color-text-muted);font-size:.9rem;text-align:center;display:none;">No UTM data yet. Add <code>?utm_source=instagram</code> to links.</p>
+                </div>
+            </div>
+
+            <!-- Row 5: Top Cities + Browser Breakdown -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Top Cities</h3>
+                    <table class="dash-table" id="citiesTable">
+                        <thead><tr><th>City</th><th>Visits</th></tr></thead>
+                        <tbody id="citiesBody"></tbody>
+                    </table>
+                    <p id="citiesEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No city data yet.</p>
+                </div>
+                <div class="chart-card">
+                    <h3>Browser Breakdown</h3>
+                    <canvas id="chartBrowsers"></canvas>
                 </div>
             </div>
 
@@ -201,19 +236,302 @@
 
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
 
-// ── Charts (stored globally so we can destroy + rebuild on refresh) ──
 var charts = {};
-
-// ── Simple Auth ──
-// Credentials are checked client-side; this is a basic admin gate, not a security boundary.
 var ADMIN_USER = 'Admin';
 var ADMIN_PASS = 'Password!';
 
+// ── Auth ──────────────────────────────────────────────────────────────────
 function handleLogin(e) {
     e.preventDefault();
     var user = document.getElementById('loginUser').value;
     var pass = document.getElementById('loginPass').value;
-    var err  = document.getElementById('loginError');
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+        sessionStorage.setItem('rc_dash_auth', '1');
+        showDashboard();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+    return false;
+}
+
+function handleLogout() {
+    sessionStorage.removeItem('rc_dash_auth');
+    location.reload();
+}
+
+function showDashboard() {
+    document.getElementById('authLogin').style.display = 'none';
+    document.getElementById('dashMain').style.display  = 'block';
+    loadDashboard();
+}
+
+(function checkSession() {
+    if (sessionStorage.getItem('rc_dash_auth') === '1') showDashboard();
+})();
+
+// ── Load Data ─────────────────────────────────────────────────────────────
+function loadDashboard() {
+    var days = parseInt(document.getElementById('dayRange').value);
+    document.getElementById('dashLoading').style.display = 'block';
+    fetch(APPS_SCRIPT_URL + '?action=analytics&days=' + days)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            document.getElementById('dashLoading').style.display = 'none';
+            renderDashboard(d);
+        })
+        .catch(function(err) {
+            document.getElementById('dashLoading').style.display = 'none';
+            console.error('Dashboard load error:', err);
+        });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(dateStr) {
+    var p = dateStr.split('-');
+    return MONTHS_SHORT[parseInt(p[1]) - 1] + ' ' + parseInt(p[2]);
+}
+function fmtTime(seconds) {
+    if (!seconds || seconds === 0) return '—';
+    var m = Math.floor(seconds / 60), s = seconds % 60;
+    return m > 0 ? m + 'm ' + s + 's' : s + 's';
+}
+
+var COLORS = {
+    purple:  '#6B35A8',
+    gold:    '#C4963E',
+    palette: ['#6B35A8','#C4963E','#3498DB','#27AE60','#E74C3C','#9B59B6','#1ABC9C','#E67E22','#F39C12','#8E44AD']
+};
+
+// ── Render All ────────────────────────────────────────────────────────────
+function renderDashboard(d) {
+    var totalViews = 0;
+    (d.pageviews || []).forEach(function(pv) { totalViews += pv.views; });
+    document.getElementById('kpiViews').textContent    = totalViews.toLocaleString();
+    document.getElementById('kpiVisitors').textContent = (d.visitors || 0).toLocaleString();
+    document.getElementById('kpiSessions').textContent = (d.sessions || 0).toLocaleString();
+    document.getElementById('kpiBookings').textContent = (d.bookingFunnel ? d.bookingFunnel.complete : 0).toLocaleString();
+    document.getElementById('kpiAvgTime').textContent  = fmtTime(d.avgTimeOnPage || 0);
+
+    renderViewsChart(d.pageviews || []);
+    renderPagesChart(d.topPages || []);
+    renderDeviceChart(d.devices || {});
+    renderFunnel(d.bookingFunnel || {});
+    renderEventsChart(d.events || []);
+    renderReferrers(d.referrers || []);
+    renderUTMChart(d.utmSources || []);
+    renderCitiesTable(d.topCities || []);
+    renderBrowserChart(d.browsers || []);
+}
+
+// ── Page Views Line Chart ─────────────────────────────────────────────────
+function renderViewsChart(data) {
+    if (charts.views) charts.views.destroy();
+    var ctx = document.getElementById('chartViews').getContext('2d');
+    charts.views = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(function(d) { return fmtDate(d.date); }),
+            datasets: [{
+                label: 'Page Views',
+                data: data.map(function(d) { return d.views; }),
+                borderColor: COLORS.purple,
+                backgroundColor: 'rgba(107,53,168,0.1)',
+                tension: 0.4, fill: true,
+                pointRadius: data.length > 20 ? 2 : 5,
+                pointHoverRadius: 7,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#fff', titleColor: '#333', bodyColor: '#555',
+                    borderColor: '#ddd', borderWidth: 1,
+                    callbacks: {
+                        title: function(items) { return data[items[0].dataIndex] ? data[items[0].dataIndex].date : ''; },
+                        label: function(item) { return '  ' + item.raw + ' views'; }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxTicksLimit: 12, maxRotation: 45, minRotation: 0, font: { size: 11 } }
+                },
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ── Top Pages Horizontal Bar ──────────────────────────────────────────────
+function renderPagesChart(data) {
+    if (charts.pages) charts.pages.destroy();
+    var ctx = document.getElementById('chartPages').getContext('2d');
+    var labels = data.map(function(d) {
+        return (d.page || '(unknown)').replace('/index.html', '/').replace('.html', '');
+    });
+    charts.pages = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label: 'Views', data: data.map(function(d) { return d.views; }), backgroundColor: COLORS.purple, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
+                y: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ── Device Type Doughnut ─────────────────────────────────────────────────
+function renderDeviceChart(devices) {
+    if (charts.devices) charts.devices.destroy();
+    var el = document.getElementById('chartDevices');
+    var labels = [], counts = [], colors = [];
+    var map = { desktop: ['Desktop', COLORS.purple], mobile: ['Mobile', COLORS.gold], tablet: ['Tablet', '#3498DB'] };
+    for (var k in map) {
+        if ((devices[k] || 0) > 0) { labels.push(map[k][0]); counts.push(devices[k]); colors.push(map[k][1]); }
+    }
+    if (counts.length === 0) {
+        el.style.display = 'none';
+        el.insertAdjacentHTML('afterend', '<p style="color:var(--color-text-muted);font-size:.9rem;text-align:center;margin-top:2rem;">No device data yet.</p>');
+        return;
+    }
+    charts.devices = new Chart(el.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }
+    });
+}
+
+// ── Booking Funnel ────────────────────────────────────────────────────────
+function renderFunnel(funnel) {
+    var steps = [
+        { key: 'service',  label: 'Service' },
+        { key: 'datetime', label: 'Date/Time' },
+        { key: 'details',  label: 'Details' },
+        { key: 'payment',  label: 'Confirm' },
+        { key: 'complete', label: 'Booked' }
+    ];
+    var max = 1;
+    steps.forEach(function(s) { if ((funnel[s.key] || 0) > max) max = funnel[s.key] || 0; });
+    var html = '';
+    steps.forEach(function(s) {
+        var count = funnel[s.key] || 0;
+        var pct = Math.round((count / max) * 100);
+        html += '<div class="funnel-bar">'
+             +  '<div class="funnel-label">' + s.label + '</div>'
+             +  '<div class="funnel-track"><div class="funnel-fill" style="width:' + pct + '%;background:' + COLORS.purple + '"></div></div>'
+             +  '<div class="funnel-count">' + count + '</div>'
+             +  '</div>';
+    });
+    document.getElementById('funnelContainer').innerHTML = html;
+}
+
+// ── Key Events Doughnut ───────────────────────────────────────────────────
+function renderEventsChart(events) {
+    if (charts.events) charts.events.destroy();
+    var interesting = events.filter(function(e) {
+        return ['booking_step','booking_complete','mailto_click','outbound_click','tel_click'].indexOf(e.event) !== -1;
+    });
+    if (interesting.length === 0) return;
+    var ctx = document.getElementById('chartEvents').getContext('2d');
+    charts.events = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: interesting.map(function(e) { return e.event.replace(/_/g, ' '); }),
+            datasets: [{ data: interesting.map(function(e) { return e.count; }), backgroundColor: COLORS.palette.slice(0, interesting.length), borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } } }
+    });
+}
+
+// ── Referrers Table ───────────────────────────────────────────────────────
+function renderReferrers(refs) {
+    var body = document.getElementById('refBody');
+    body.innerHTML = '';
+    if (refs.length === 0) {
+        document.getElementById('refTable').style.display = 'none';
+        document.getElementById('refEmpty').style.display = 'block';
+        return;
+    }
+    document.getElementById('refTable').style.display = 'table';
+    document.getElementById('refEmpty').style.display = 'none';
+    refs.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + r.source + '</td><td>' + r.count + '</td>';
+        body.appendChild(tr);
+    });
+}
+
+// ── UTM Sources Bar Chart ─────────────────────────────────────────────────
+function renderUTMChart(utmSources) {
+    if (charts.utm) charts.utm.destroy();
+    var emptyEl = document.getElementById('utmEmpty');
+    if (!utmSources || utmSources.length === 0) { emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+    var ctx = document.getElementById('chartUTM').getContext('2d');
+    charts.utm = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: utmSources.map(function(u) { return u.source; }),
+            datasets: [{ label: 'Visits', data: utmSources.map(function(u) { return u.count; }), backgroundColor: COLORS.gold, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
+                y: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ── Cities Table ──────────────────────────────────────────────────────────
+function renderCitiesTable(cities) {
+    var body = document.getElementById('citiesBody');
+    body.innerHTML = '';
+    if (!cities || cities.length === 0) {
+        document.getElementById('citiesTable').style.display = 'none';
+        document.getElementById('citiesEmpty').style.display = 'block';
+        return;
+    }
+    document.getElementById('citiesTable').style.display = 'table';
+    document.getElementById('citiesEmpty').style.display = 'none';
+    cities.forEach(function(c) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + c.city + '</td><td>' + c.count + '</td>';
+        body.appendChild(tr);
+    });
+}
+
+// ── Browser Breakdown Doughnut ────────────────────────────────────────────
+function renderBrowserChart(browsers) {
+    if (charts.browsers) charts.browsers.destroy();
+    if (!browsers || browsers.length === 0) return;
+    var ctx = document.getElementById('chartBrowsers').getContext('2d');
+    charts.browsers = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: browsers.map(function(b) { return b.browser; }),
+            datasets: [{ data: browsers.map(function(b) { return b.count; }), backgroundColor: COLORS.palette.slice(0, browsers.length), borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }
+    });
+}
+</script>
+</body>
+</html>
 
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
         sessionStorage.setItem('rc_dash_auth', '1');

@@ -375,7 +375,9 @@ function getOrCreateAnalyticsSheet() {
     sheet = ss.insertSheet(CONFIG.ANALYTICS_SHEET);
     sheet.appendRow([
       'Timestamp', 'Date', 'Event', 'Page', 'URL', 'Data',
-      'Referrer', 'Screen', 'SessionId', 'VisitorId'
+      'Referrer', 'Screen', 'SessionId', 'VisitorId',
+      'IP', 'City', 'Region', 'Country', 'Device', 'Browser', 'OS',
+      'UTM_Source', 'UTM_Medium', 'UTM_Campaign'
     ]);
     sheet.setFrozenRows(1);
     sheet.getRange('1:1').setFontWeight('bold');
@@ -396,14 +398,24 @@ function logAnalyticsEvent(data) {
     sheet.appendRow([
       ts,
       day,
-      data.event    || '',
-      data.page     || '',
-      data.url      || '',
+      data.event       || '',
+      data.page        || '',
+      data.url         || '',
       typeof data.data === 'object' ? JSON.stringify(data.data) : (data.data || ''),
-      data.referrer || '',
-      data.screen   || '',
-      data.sessionId || '',
-      data.visitorId || ''
+      data.referrer    || '',
+      data.screen      || '',
+      data.sessionId   || '',
+      data.visitorId   || '',
+      data.ip          || '',
+      data.city        || '',
+      data.region      || '',
+      data.country     || '',
+      data.device      || '',
+      data.browser     || '',
+      data.os          || '',
+      data.utmSource   || '',
+      data.utmMedium   || '',
+      data.utmCampaign || ''
     ]);
 
     return { ok: true };
@@ -431,7 +443,8 @@ function getAnalyticsData(days) {
     return { pageviews: [], events: [], topPages: [], visitors: 0, sessions: 0 };
   }
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  var numCols = Math.min(sheet.getLastColumn(), 20);
+  var data = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
 
   var cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
@@ -439,12 +452,17 @@ function getAnalyticsData(days) {
   var cutoffStr = Utilities.formatDate(cutoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
 
   // Accumulators
-  var pvByDay     = {};   // { "2026-03-01": count }
-  var eventCounts = {};   // { "quiz_start": count }
-  var pageCounts  = {};   // { "/index.html": count }
+  var pvByDay     = {};
+  var eventCounts = {};
+  var pageCounts  = {};
   var visitors    = {};
   var sessions    = {};
   var referrers   = {};
+  var devices     = { mobile: 0, tablet: 0, desktop: 0 };
+  var cities      = {};
+  var utmSources  = {};
+  var browsers    = {};
+  var timeOnPage  = [];
   var bookingFunnel = { service: 0, datetime: 0, details: 0, payment: 0, complete: 0 };
 
   for (var i = 0; i < data.length; i++) {
@@ -452,13 +470,16 @@ function getAnalyticsData(days) {
     var day    = (row[1] || '').toString();
     if (day < cutoffStr) continue;
 
-    var event  = (row[2] || '').toString();
-    var page   = (row[3] || '').toString();
-    var url    = (row[4] || '').toString();
-    var evData = (row[5] || '').toString();
-    var ref    = (row[6] || '').toString();
-    var sid    = (row[8] || '').toString();
-    var vid    = (row[9] || '').toString();
+    var event   = (row[2]  || '').toString();
+    var url     = (row[4]  || '').toString();
+    var evData  = (row[5]  || '').toString();
+    var ref     = (row[6]  || '').toString();
+    var sid     = (row[8]  || '').toString();
+    var vid     = (row[9]  || '').toString();
+    var city    = numCols >= 12 ? (row[11] || '').toString() : '';
+    var device  = numCols >= 15 ? (row[14] || '').toString() : '';
+    var browser = numCols >= 16 ? (row[15] || '').toString() : '';
+    var utmSrc  = numCols >= 18 ? (row[17] || '').toString() : '';
 
     // Page views by day
     if (event === 'pageview') {
@@ -466,20 +487,20 @@ function getAnalyticsData(days) {
       pageCounts[url || '/'] = (pageCounts[url || '/'] || 0) + 1;
     }
 
-    // Event counts
-    if (event && event !== 'pageview' && event !== 'scroll_depth') {
+    // Event counts (exclude noise events)
+    if (event && event !== 'pageview' && event !== 'scroll_depth' && event !== 'time_on_page') {
       eventCounts[event] = (eventCounts[event] || 0) + 1;
     }
 
+    // Time on page
+    if (event === 'time_on_page') {
+      var secs = parseInt(evData);
+      if (!isNaN(secs) && secs > 1 && secs < 3600) timeOnPage.push(secs);
+    }
+
     // Booking funnel
-    if (event === 'booking_step') {
-      if (bookingFunnel.hasOwnProperty(evData)) {
-        bookingFunnel[evData]++;
-      }
-    }
-    if (event === 'booking_complete') {
-      bookingFunnel.complete++;
-    }
+    if (event === 'booking_step' && bookingFunnel.hasOwnProperty(evData)) bookingFunnel[evData]++;
+    if (event === 'booking_complete') bookingFunnel.complete++;
 
     // Unique visitors & sessions
     if (vid) visitors[vid] = true;
@@ -489,11 +510,23 @@ function getAnalyticsData(days) {
     if (ref) {
       try {
         var host = ref.replace(/https?:\/\//, '').split('/')[0];
-        if (host && host.indexOf('royalcolor') === -1) {
-          referrers[host] = (referrers[host] || 0) + 1;
-        }
+        if (host && host.indexOf('royalcolor') === -1) referrers[host] = (referrers[host] || 0) + 1;
       } catch (e) {}
     }
+
+    // Devices
+    if (device === 'mobile') devices.mobile++;
+    else if (device === 'tablet') devices.tablet++;
+    else if (device === 'desktop') devices.desktop++;
+
+    // Cities
+    if (city) cities[city] = (cities[city] || 0) + 1;
+
+    // UTM sources
+    if (utmSrc) utmSources[utmSrc] = (utmSources[utmSrc] || 0) + 1;
+
+    // Browsers
+    if (browser) browsers[browser] = (browsers[browser] || 0) + 1;
   }
 
   // Build sorted arrays
@@ -513,6 +546,22 @@ function getAnalyticsData(days) {
   for (var r in referrers) refArr.push({ source: r, count: referrers[r] });
   refArr.sort(function (a, b) { return b.count - a.count; });
 
+  var citiesArr = [];
+  for (var c in cities) citiesArr.push({ city: c, count: cities[c] });
+  citiesArr.sort(function (a, b) { return b.count - a.count; });
+
+  var utmArr = [];
+  for (var u in utmSources) utmArr.push({ source: u, count: utmSources[u] });
+  utmArr.sort(function (a, b) { return b.count - a.count; });
+
+  var browsersArr = [];
+  for (var br in browsers) browsersArr.push({ browser: br, count: browsers[br] });
+  browsersArr.sort(function (a, b) { return b.count - a.count; });
+
+  var avgTime = timeOnPage.length > 0
+    ? Math.round(timeOnPage.reduce(function(a, b) { return a + b; }, 0) / timeOnPage.length)
+    : 0;
+
   return {
     pageviews:     pvArr,
     topPages:      topPagesArr.slice(0, 10),
@@ -521,6 +570,11 @@ function getAnalyticsData(days) {
     bookingFunnel: bookingFunnel,
     visitors:      Object.keys(visitors).length,
     sessions:      Object.keys(sessions).length,
-    days:          days
+    days:          days,
+    devices:       devices,
+    topCities:     citiesArr.slice(0, 10),
+    utmSources:    utmArr.slice(0, 10),
+    browsers:      browsersArr,
+    avgTimeOnPage: avgTime
   };
 }
