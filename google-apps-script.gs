@@ -467,8 +467,11 @@ function getAnalyticsData(days) {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var day    = (row[1] || '').toString();
-    if (day < cutoffStr) continue;
+    // row[1] may be a Date object if Sheets auto-formatted the column — normalize to "yyyy-MM-dd"
+    var day = row[1] instanceof Date
+      ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : (row[1] || '').toString().substring(0, 10);
+    if (!day || day < cutoffStr) continue;
 
     var event   = (row[2]  || '').toString();
     var url     = (row[4]  || '').toString();
