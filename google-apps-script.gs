@@ -457,12 +457,18 @@ function getAnalyticsData(days) {
   var pageCounts  = {};
   var visitors    = {};
   var sessions    = {};
+  var newVisitors = {};
   var referrers   = {};
   var devices     = { mobile: 0, tablet: 0, desktop: 0 };
   var cities      = {};
+  var countries   = {};
   var utmSources  = {};
   var browsers    = {};
+  var osBreakdown = {};
   var timeOnPage  = [];
+  var scrollDepths = [];
+  var byDayOfWeek = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+  var recentActivity = [];
   var bookingFunnel = { service: 0, datetime: 0, details: 0, payment: 0, complete: 0 };
 
   for (var i = 0; i < data.length; i++) {
@@ -480,14 +486,22 @@ function getAnalyticsData(days) {
     var sid     = (row[8]  || '').toString();
     var vid     = (row[9]  || '').toString();
     var city    = numCols >= 12 ? (row[11] || '').toString() : '';
+    var country = numCols >= 14 ? (row[13] || '').toString() : '';
     var device  = numCols >= 15 ? (row[14] || '').toString() : '';
     var browser = numCols >= 16 ? (row[15] || '').toString() : '';
+    var os      = numCols >= 17 ? (row[16] || '').toString() : '';
     var utmSrc  = numCols >= 18 ? (row[17] || '').toString() : '';
+    var ts      = (row[0]  || '').toString();
 
     // Page views by day
     if (event === 'pageview') {
       pvByDay[day] = (pvByDay[day] || 0) + 1;
       pageCounts[url || '/'] = (pageCounts[url || '/'] || 0) + 1;
+      // Day of week from timestamp
+      try {
+        var dow = new Date(ts).getDay();
+        if (!isNaN(dow)) byDayOfWeek[dow] = (byDayOfWeek[dow] || 0) + 1;
+      } catch(e) {}
     }
 
     // Event counts (exclude noise events)
@@ -501,6 +515,12 @@ function getAnalyticsData(days) {
       if (!isNaN(secs) && secs > 1 && secs < 3600) timeOnPage.push(secs);
     }
 
+    // Scroll depth
+    if (event === 'scroll_depth') {
+      var depth = parseInt(evData);
+      if (!isNaN(depth)) scrollDepths.push(depth);
+    }
+
     // Booking funnel
     if (event === 'booking_step' && bookingFunnel.hasOwnProperty(evData)) bookingFunnel[evData]++;
     if (event === 'booking_complete') bookingFunnel.complete++;
@@ -508,6 +528,9 @@ function getAnalyticsData(days) {
     // Unique visitors & sessions
     if (vid) visitors[vid] = true;
     if (sid) sessions[sid] = true;
+
+    // New vs returning: flag visitor as new if first seen in this period
+    if (vid && !newVisitors[vid]) newVisitors[vid] = day;
 
     // Referrers
     if (ref) {
@@ -525,11 +548,22 @@ function getAnalyticsData(days) {
     // Cities
     if (city) cities[city] = (cities[city] || 0) + 1;
 
+    // Countries
+    if (country) countries[country] = (countries[country] || 0) + 1;
+
     // UTM sources
     if (utmSrc) utmSources[utmSrc] = (utmSources[utmSrc] || 0) + 1;
 
     // Browsers
     if (browser) browsers[browser] = (browsers[browser] || 0) + 1;
+
+    // OS
+    if (os) osBreakdown[os] = (osBreakdown[os] || 0) + 1;
+
+    // Recent activity (collect pageviews for feed, keep last 20)
+    if (event === 'pageview' && recentActivity.length < 200) {
+      recentActivity.push({ ts: ts, url: url, city: city, country: country, device: device, browser: browser });
+    }
   }
 
   // Build sorted arrays
@@ -561,23 +595,58 @@ function getAnalyticsData(days) {
   for (var br in browsers) browsersArr.push({ browser: br, count: browsers[br] });
   browsersArr.sort(function (a, b) { return b.count - a.count; });
 
+  var osArr = [];
+  for (var os in osBreakdown) osArr.push({ os: os, count: osBreakdown[os] });
+  osArr.sort(function (a, b) { return b.count - a.count; });
+
+  var countriesArr = [];
+  for (var cn in countries) countriesArr.push({ country: cn, count: countries[cn] });
+  countriesArr.sort(function (a, b) { return b.count - a.count; });
+
+  var avgScrollDepth = scrollDepths.length > 0
+    ? Math.round(scrollDepths.reduce(function(a, b) { return a + b; }, 0) / scrollDepths.length)
+    : 0;
+
   var avgTime = timeOnPage.length > 0
     ? Math.round(timeOnPage.reduce(function(a, b) { return a + b; }, 0) / timeOnPage.length)
     : 0;
 
+  // New vs returning: visitor is "new" if their first-seen date is within the cutoff window
+  var totalVisitorCount = Object.keys(visitors).length;
+  var newVisitorCount = 0;
+  for (var v in newVisitors) {
+    if (newVisitors[v] >= cutoffStr) newVisitorCount++;
+  }
+  var returningVisitorCount = totalVisitorCount - newVisitorCount;
+
+  // Sort recent activity newest first, take top 20
+  recentActivity.sort(function(a, b) { return a.ts < b.ts ? 1 : -1; });
+  recentActivity = recentActivity.slice(0, 20);
+
+  // Day of week labels
+  var dowLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var dowArr = dowLabels.map(function(label, idx) { return { day: label, count: byDayOfWeek[idx] || 0 }; });
+
   return {
-    pageviews:     pvArr,
-    topPages:      topPagesArr.slice(0, 10),
-    events:        evArr,
-    referrers:     refArr.slice(0, 10),
-    bookingFunnel: bookingFunnel,
-    visitors:      Object.keys(visitors).length,
-    sessions:      Object.keys(sessions).length,
-    days:          days,
-    devices:       devices,
-    topCities:     citiesArr.slice(0, 10),
-    utmSources:    utmArr.slice(0, 10),
-    browsers:      browsersArr,
-    avgTimeOnPage: avgTime
+    pageviews:          pvArr,
+    topPages:           topPagesArr.slice(0, 10),
+    events:             evArr,
+    referrers:          refArr.slice(0, 10),
+    bookingFunnel:      bookingFunnel,
+    visitors:           totalVisitorCount,
+    newVisitors:        newVisitorCount,
+    returningVisitors:  returningVisitorCount,
+    sessions:           Object.keys(sessions).length,
+    days:               days,
+    devices:            devices,
+    topCities:          citiesArr.slice(0, 10),
+    topCountries:       countriesArr.slice(0, 10),
+    utmSources:         utmArr.slice(0, 10),
+    browsers:           browsersArr,
+    osBreakdown:        osArr,
+    avgTimeOnPage:      avgTime,
+    avgScrollDepth:     avgScrollDepth,
+    byDayOfWeek:        dowArr,
+    recentActivity:     recentActivity
   };
 }

@@ -73,6 +73,22 @@
         .logout-link:hover { color: var(--color-primary); }
         .chart-full { grid-column: 1 / -1; }
         .chart-card canvas { max-height: 320px; }
+
+        /* ── Activity Feed ── */
+        .activity-feed { list-style: none; padding: 0; margin: 0; }
+        .activity-item { display: flex; align-items: flex-start; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid var(--color-border); font-size: .87rem; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); margin-top: 5px; flex-shrink: 0; }
+        .activity-meta { color: var(--color-text-muted); font-size: .8rem; margin-top: 2px; }
+
+        /* ── Date range buttons ── */
+        .range-btns { display: flex; gap: .4rem; }
+        .range-btn { font-family: var(--font-body); font-size: .85rem; padding: .4rem .9rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: #fff; cursor: pointer; transition: var(--transition); color: var(--color-text); }
+        .range-btn.active, .range-btn:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+        /* ── Export btn ── */
+        .btn-export { font-family: var(--font-body); font-size: .85rem; padding: .45rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: #fff; cursor: pointer; color: var(--color-text); transition: var(--transition); }
+        .btn-export:hover { border-color: var(--color-primary); color: var(--color-primary); }
     </style>
 </head>
 <body>
@@ -123,13 +139,13 @@
             </div>
 
             <div class="dash-controls">
-                <select id="dayRange">
-                    <option value="7">Last 7 days</option>
-                    <option value="30" selected>Last 30 days</option>
-                    <option value="60">Last 60 days</option>
-                    <option value="90">Last 90 days</option>
-                </select>
-                <button onclick="loadDashboard()">Refresh</button>
+                <div class="range-btns">
+                    <button class="range-btn" onclick="setRange(7)">7 days</button>
+                    <button class="range-btn active" onclick="setRange(30)">30 days</button>
+                    <button class="range-btn" onclick="setRange(90)">90 days</button>
+                </div>
+                <button onclick="loadDashboard()">&#8635; Refresh</button>
+                <button class="btn-export" onclick="exportCSV()">&#8595; Export CSV</button>
             </div>
 
             <!-- KPI Cards -->
@@ -143,6 +159,14 @@
                     <div class="kpi-label">Unique Visitors</div>
                 </div>
                 <div class="kpi-card">
+                    <div class="kpi-value" id="kpiNewVisitors">—</div>
+                    <div class="kpi-label">New Visitors</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiReturning">—</div>
+                    <div class="kpi-label">Returning Visitors</div>
+                </div>
+                <div class="kpi-card">
                     <div class="kpi-value" id="kpiSessions">—</div>
                     <div class="kpi-label">Sessions</div>
                 </div>
@@ -151,8 +175,16 @@
                     <div class="kpi-label">Bookings Completed</div>
                 </div>
                 <div class="kpi-card">
+                    <div class="kpi-value" id="kpiConversion">—</div>
+                    <div class="kpi-label">Booking Conversion</div>
+                </div>
+                <div class="kpi-card">
                     <div class="kpi-value" id="kpiAvgTime">—</div>
                     <div class="kpi-label">Avg. Time on Page</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpiScrollDepth">—</div>
+                    <div class="kpi-label">Avg. Scroll Depth</div>
                 </div>
             </div>
 
@@ -221,6 +253,45 @@
                 </div>
             </div>
 
+            <!-- Row 6: OS + Countries -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Operating System</h3>
+                    <canvas id="chartOS"></canvas>
+                    <p id="osEmpty" style="color:var(--color-text-muted);font-size:.9rem;text-align:center;display:none;">No OS data yet.</p>
+                </div>
+                <div class="chart-card">
+                    <h3>Top Countries</h3>
+                    <table class="dash-table" id="countriesTable">
+                        <thead><tr><th>Country</th><th>Visits</th></tr></thead>
+                        <tbody id="countriesBody"></tbody>
+                    </table>
+                    <p id="countriesEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No country data yet.</p>
+                </div>
+            </div>
+
+            <!-- Row 7: Day of Week + Scroll Depth -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Traffic by Day of Week</h3>
+                    <canvas id="chartDow"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Scroll Depth Distribution</h3>
+                    <canvas id="chartScroll"></canvas>
+                    <p id="scrollEmpty" style="color:var(--color-text-muted);font-size:.9rem;text-align:center;display:none;">No scroll data yet.</p>
+                </div>
+            </div>
+
+            <!-- Row 8: Recent Activity (full width) -->
+            <div class="chart-grid">
+                <div class="chart-card chart-full">
+                    <h3>Recent Visitors <span style="font-size:.8rem;font-weight:400;color:var(--color-text-muted);">(last 20 page views)</span></h3>
+                    <ul class="activity-feed" id="activityFeed"></ul>
+                    <p id="activityEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No activity yet.</p>
+                </div>
+            </div>
+
             <!-- Loading overlay -->
             <div id="dashLoading" class="dash-loading" style="display:none;">
                 <div class="spinner"></div>
@@ -239,6 +310,8 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_Qn
 var charts = {};
 var ADMIN_USER = 'Admin';
 var ADMIN_PASS = 'Password!';
+var currentDays = 30;
+var lastData = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 function handleLogin(e) {
@@ -270,12 +343,19 @@ function showDashboard() {
 })();
 
 // ── Load Data ─────────────────────────────────────────────────────────────
+function setRange(days) {
+    currentDays = days;
+    document.querySelectorAll('.range-btn').forEach(function(b) { b.classList.remove('active'); });
+    event.target.classList.add('active');
+    loadDashboard();
+}
+
 function loadDashboard() {
-    var days = parseInt(document.getElementById('dayRange').value);
     document.getElementById('dashLoading').style.display = 'block';
-    fetch(APPS_SCRIPT_URL + '?action=analytics&days=' + days)
+    fetch(APPS_SCRIPT_URL + '?action=analytics&days=' + currentDays)
         .then(function(r) { return r.json(); })
         .then(function(d) {
+            lastData = d;
             document.getElementById('dashLoading').style.display = 'none';
             renderDashboard(d);
         })
@@ -310,11 +390,19 @@ var COLORS = {
 function renderDashboard(d) {
     var totalViews = 0;
     (d.pageviews || []).forEach(function(pv) { totalViews += pv.views; });
-    document.getElementById('kpiViews').textContent    = totalViews.toLocaleString();
-    document.getElementById('kpiVisitors').textContent = (d.visitors || 0).toLocaleString();
-    document.getElementById('kpiSessions').textContent = (d.sessions || 0).toLocaleString();
-    document.getElementById('kpiBookings').textContent = (d.bookingFunnel ? d.bookingFunnel.complete : 0).toLocaleString();
-    document.getElementById('kpiAvgTime').textContent  = fmtTime(d.avgTimeOnPage || 0);
+    var bookings = d.bookingFunnel ? d.bookingFunnel.complete : 0;
+    var visitors = d.visitors || 0;
+    var convRate = visitors > 0 ? ((bookings / visitors) * 100).toFixed(1) + '%' : '—';
+
+    document.getElementById('kpiViews').textContent       = totalViews.toLocaleString();
+    document.getElementById('kpiVisitors').textContent    = visitors.toLocaleString();
+    document.getElementById('kpiNewVisitors').textContent = (d.newVisitors || 0).toLocaleString();
+    document.getElementById('kpiReturning').textContent   = (d.returningVisitors || 0).toLocaleString();
+    document.getElementById('kpiSessions').textContent    = (d.sessions || 0).toLocaleString();
+    document.getElementById('kpiBookings').textContent    = bookings.toLocaleString();
+    document.getElementById('kpiConversion').textContent  = convRate;
+    document.getElementById('kpiAvgTime').textContent     = fmtTime(d.avgTimeOnPage || 0);
+    document.getElementById('kpiScrollDepth').textContent = d.avgScrollDepth ? d.avgScrollDepth + '%' : '—';
 
     renderViewsChart(d.pageviews || []);
     renderPagesChart(d.topPages || []);
@@ -325,6 +413,11 @@ function renderDashboard(d) {
     renderUTMChart(d.utmSources || []);
     renderCitiesTable(d.topCities || []);
     renderBrowserChart(d.browsers || []);
+    renderOSChart(d.osBreakdown || []);
+    renderCountriesTable(d.topCountries || []);
+    renderDowChart(d.byDayOfWeek || []);
+    renderScrollChart(d.avgScrollDepth || 0);
+    renderActivityFeed(d.recentActivity || []);
 }
 
 // ── Page Views Line Chart ─────────────────────────────────────────────────
@@ -535,6 +628,154 @@ function renderBrowserChart(browsers) {
         },
         options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }
     });
+}
+
+// ── OS Breakdown Doughnut ─────────────────────────────────────────────────
+function renderOSChart(osArr) {
+    if (charts.os) charts.os.destroy();
+    var emptyEl = document.getElementById('osEmpty');
+    if (!osArr || osArr.length === 0) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+    if (emptyEl) emptyEl.style.display = 'none';
+    var ctx = document.getElementById('chartOS').getContext('2d');
+    charts.os = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: osArr.map(function(o) { return o.os; }),
+            datasets: [{ data: osArr.map(function(o) { return o.count; }), backgroundColor: COLORS.palette.slice(0, osArr.length), borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }
+    });
+}
+
+// ── Countries Table ───────────────────────────────────────────────────────
+function renderCountriesTable(countries) {
+    var body = document.getElementById('countriesBody');
+    body.innerHTML = '';
+    if (!countries || countries.length === 0) {
+        document.getElementById('countriesTable').style.display = 'none';
+        document.getElementById('countriesEmpty').style.display = 'block';
+        return;
+    }
+    document.getElementById('countriesTable').style.display = 'table';
+    document.getElementById('countriesEmpty').style.display = 'none';
+    countries.forEach(function(c) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + c.country + '</td><td>' + c.count + '</td>';
+        body.appendChild(tr);
+    });
+}
+
+// ── Day of Week Bar Chart ─────────────────────────────────────────────────
+function renderDowChart(dowArr) {
+    if (charts.dow) charts.dow.destroy();
+    if (!dowArr || dowArr.length === 0) return;
+    var ctx = document.getElementById('chartDow').getContext('2d');
+    charts.dow = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dowArr.map(function(d) { return d.day; }),
+            datasets: [{ label: 'Page Views', data: dowArr.map(function(d) { return d.count; }), backgroundColor: COLORS.purple, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ── Scroll Depth Bar Chart ────────────────────────────────────────────────
+function renderScrollChart(avgDepth) {
+    if (charts.scroll) charts.scroll.destroy();
+    var emptyEl = document.getElementById('scrollEmpty');
+    if (!avgDepth) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+    if (emptyEl) emptyEl.style.display = 'none';
+    var milestones = [25, 50, 75, 100];
+    // Show proportion that reached each milestone based on avg
+    var ctx = document.getElementById('chartScroll').getContext('2d');
+    charts.scroll = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: milestones.map(function(m) { return m + '%'; }),
+            datasets: [{
+                label: 'Estimated % of visitors',
+                data: milestones.map(function(m) { return avgDepth >= m ? 100 : Math.max(0, Math.round((avgDepth / m) * 100)); }),
+                backgroundColor: milestones.map(function(m) { return avgDepth >= m ? COLORS.purple : COLORS.gold; }),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(i) { return i.raw + '% of visitors reached this point'; } } }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+                y: { beginAtZero: true, max: 100, ticks: { callback: function(v) { return v + '%'; }, font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+// ── Recent Activity Feed ──────────────────────────────────────────────────
+function renderActivityFeed(activities) {
+    var feed = document.getElementById('activityFeed');
+    var empty = document.getElementById('activityEmpty');
+    feed.innerHTML = '';
+    if (!activities || activities.length === 0) {
+        feed.style.display = 'none';
+        if (empty) empty.style.display = 'block';
+        return;
+    }
+    feed.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    activities.forEach(function(a) {
+        var page = (a.url || '/').replace('/index.html', '/').replace('.html', '');
+        var location = [a.city, a.country].filter(Boolean).join(', ') || 'Unknown location';
+        var when = '';
+        try {
+            var d = new Date(a.ts);
+            when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        } catch(e) {}
+        var li = document.createElement('li');
+        li.className = 'activity-item';
+        li.innerHTML = '<div class="activity-dot"></div>'
+            + '<div><div>' + page + ' &nbsp;<span style="color:var(--color-text-muted);">— ' + location + '</span></div>'
+            + '<div class="activity-meta">' + (a.device || '') + (a.browser ? ' · ' + a.browser : '') + (when ? ' · ' + when : '') + '</div></div>';
+        feed.appendChild(li);
+    });
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────
+function exportCSV() {
+    if (!lastData) { alert('Load the dashboard first.'); return; }
+    var rows = [['Date', 'Page Views']];
+    (lastData.pageviews || []).forEach(function(pv) { rows.push([pv.date, pv.views]); });
+    rows.push([]);
+    rows.push(['Page', 'Views']);
+    (lastData.topPages || []).forEach(function(p) { rows.push([p.page, p.views]); });
+    rows.push([]);
+    rows.push(['City', 'Visits']);
+    (lastData.topCities || []).forEach(function(c) { rows.push([c.city, c.count]); });
+    rows.push([]);
+    rows.push(['Country', 'Visits']);
+    (lastData.topCountries || []).forEach(function(c) { rows.push([c.country, c.count]); });
+    rows.push([]);
+    rows.push(['Browser', 'Count']);
+    (lastData.browsers || []).forEach(function(b) { rows.push([b.browser, b.count]); });
+
+    var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url  = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'royalcolor-analytics-' + currentDays + 'days.csv';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
 </body>
