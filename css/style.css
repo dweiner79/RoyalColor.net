@@ -779,7 +779,7 @@ ul { list-style: none; }
 .about-image-box {
     border-radius: var(--radius-xl);
     overflow: hidden;
-    aspect-ratio: 4/5;
+    aspect-ratio: 3/4;
     background: linear-gradient(135deg, var(--color-secondary-light), var(--color-primary-light));
     position: relative;
 }
