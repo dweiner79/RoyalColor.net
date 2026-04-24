@@ -256,6 +256,13 @@
                         <input type="text" id="cNotes" placeholder="Anything we should know?">
                     </div>
                 </div>
+                <div class="form-row2">
+                    <div class="fg">
+                        <label for="cPromo">Promo Code <span style="font-weight:400;color:var(--color-text-muted);">(optional)</span></label>
+                        <input type="text" id="cPromo" placeholder="Enter promo code" autocomplete="off" style="text-transform:uppercase;">
+                    </div>
+                    <div class="fg"></div>
+                </div>
             </div>
 
             <div class="btn-row">
@@ -738,6 +745,8 @@ function enterStep4() {
     var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var dateDisplay = dayNames[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 
+    var promo = document.getElementById('cPromo').value.trim().toUpperCase();
+
     var rows = [
         ['Service', S.svc.name],
         ['Duration', S.svc.label],
@@ -747,6 +756,7 @@ function enterStep4() {
         ['Email', email]
     ];
     if (phone) rows.push(['Phone', phone]);
+    if (promo) rows.push(['Promo Code', '<strong style="color:var(--color-primary);">' + promo + '</strong>']);
 
     var html = '';
     for (var i = 0; i < rows.length; i++) {
@@ -767,14 +777,15 @@ function submitBooking() {
     btn.textContent = 'Confirming…';
 
     var payload = {
-        date:     S.selDate,
-        time:     S.selTime,
-        service:  S.svc.name,
-        duration: S.svc.dur,
-        name:     document.getElementById('cName').value.trim(),
-        email:    document.getElementById('cEmail').value.trim(),
-        phone:    document.getElementById('cPhone').value.trim(),
-        notes:    document.getElementById('cNotes').value.trim()
+        date:      S.selDate,
+        time:      S.selTime,
+        service:   S.svc.name,
+        duration:  S.svc.dur,
+        name:      document.getElementById('cName').value.trim(),
+        email:     document.getElementById('cEmail').value.trim(),
+        phone:     document.getElementById('cPhone').value.trim(),
+        notes:     document.getElementById('cNotes').value.trim(),
+        promoCode: document.getElementById('cPromo').value.trim().toUpperCase()
     };
 
     fetch(APPS_SCRIPT_URL, {

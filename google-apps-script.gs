@@ -310,6 +310,7 @@ function createBooking(data) {
         'Email: '   + data.email + '\n' +
         'Phone: '   + (data.phone || 'Not provided') + '\n' +
         'Notes: '   + (data.notes || 'None') + '\n' +
+        (data.promoCode ? 'Promo Code: ' + data.promoCode + '\n' : '') +
         '---\n' +
         'Booked via website on ' + new Date().toLocaleString()
     }
@@ -335,8 +336,9 @@ function createBooking(data) {
       'Name:     ' + data.name + '\n' +
       'Email:    ' + data.email + '\n' +
       'Phone:    ' + (data.phone || 'Not provided') + '\n' +
-      'Notes:    ' + (data.notes || 'None') + '\n\n' +
-      'The appointment has been added to your Google Calendar.';
+      'Notes:    ' + (data.notes || 'None') + '\n' +
+      (data.promoCode ? 'Promo Code: ' + data.promoCode + '\n' : '') +
+      '\nThe appointment has been added to your Google Calendar.';
 
     GmailApp.sendEmail(
       CONFIG.CALENDAR_ID,
