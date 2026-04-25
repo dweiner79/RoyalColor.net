@@ -244,6 +244,10 @@
                         <label for="cNotes">Notes / Questions</label>
                         <input type="text" id="cNotes" placeholder="Anything we should know?">
                     </div>
+                    <div class="fg">
+                        <label for="cPromo">Promo Code <span style="font-weight:400;opacity:.7;">(optional)</span></label>
+                        <input type="text" id="cPromo" placeholder="Enter promo code">
+                    </div>
                 </div>
             </div>
 
@@ -792,6 +796,8 @@ function enterStep4() {
         ['Email', email]
     ];
     if (phone) rows.push(['Phone', phone]);
+    var promo = document.getElementById('cPromo').value.trim();
+    if (promo) rows.push(['Promo Code', promo]);
 
     var html = '';
     for (var i = 0; i < rows.length; i++) {
@@ -819,7 +825,8 @@ function submitBooking() {
         name:      document.getElementById('cName').value.trim(),
         email:     document.getElementById('cEmail').value.trim(),
         phone:     document.getElementById('cPhone').value.trim(),
-        notes:     document.getElementById('cNotes').value.trim()
+        notes:     document.getElementById('cNotes').value.trim(),
+        promoCode: document.getElementById('cPromo').value.trim() || undefined
     };
 
     fetch(APPS_SCRIPT_URL, {
