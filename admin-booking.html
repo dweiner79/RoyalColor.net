@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Settings | Royal Color Admin</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ── Layout ── */
+        .admin-wrap { padding-top: 6rem; min-height: 100vh; background: var(--color-warm-white); }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+        .admin-header h1 { font-size: 1.8rem; }
+        .admin-nav-pills { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+        .pill { padding: .45rem 1.1rem; border-radius: 50px; border: 1px solid var(--color-border); background: #fff; font-size: .88rem; font-weight: 500; cursor: pointer; color: var(--color-text); transition: var(--transition); font-family: var(--font-body); }
+        .pill.active, .pill:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+        /* ── Auth ── */
+        .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; text-align: center; }
+        .auth-box { background: #fff; border-radius: var(--radius-md); padding: 3rem; box-shadow: var(--shadow-md); max-width: 420px; width: 100%; }
+        .auth-box h2 { margin-bottom: .75rem; }
+        .auth-box p { margin-bottom: 1.5rem; }
+        .auth-form-group { margin-bottom: 1rem; text-align: left; }
+        .auth-form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: var(--color-text-light); }
+        .auth-form-group input { width: 100%; padding: .65rem .9rem; font-family: var(--font-body); font-size: .95rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-sizing: border-box; }
+        .auth-form-group input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(107,53,168,.12); }
+        .auth-error { color: #c0392b; font-size: .85rem; margin-top: .5rem; display: none; }
+
+        /* ── Cards ── */
+        .admin-card { background: #fff; border-radius: var(--radius-md); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem; }
+        .admin-card h2 { font-size: 1.25rem; margin-bottom: 1.5rem; padding-bottom: .75rem; border-bottom: 1px solid var(--color-border); }
+        .admin-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--color-text-light); }
+
+        /* ── Form fields ── */
+        .fg { margin-bottom: 1.1rem; }
+        .fg label { display: block; font-size: .83rem; font-weight: 600; margin-bottom: .3rem; color: var(--color-text-light); text-transform: uppercase; letter-spacing: .04em; }
+        .fg input, .fg select, .fg textarea { width: 100%; padding: .65rem .9rem; font-family: var(--font-body); font-size: .95rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; transition: var(--transition); }
+        .fg input:focus, .fg select:focus, .fg textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(107,53,168,.1); }
+        .fg textarea { resize: vertical; min-height: 70px; }
+        .fg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .fg-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+        /* ── Hours grid ── */
+        .hours-grid { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: .75rem 1rem; align-items: center; }
+        .hours-grid .col-label { font-size: .83rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+        .day-label { font-weight: 500; font-size: .95rem; }
+        .hours-grid input[type="time"] { padding: .55rem .75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: .9rem; width: 100%; }
+        .hours-grid input[type="time"]:focus { outline: none; border-color: var(--color-primary); }
+        .hours-grid input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
+        .day-row.closed .day-label { color: var(--color-text-muted); }
+        .day-row.closed input[type="time"] { opacity: .4; pointer-events: none; }
+
+        /* ── Services ── */
+        .service-list { display: flex; flex-direction: column; gap: .75rem; }
+        .service-item { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; background: #fff; position: relative; }
+        .service-item .si-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .service-item .si-name { font-weight: 700; font-size: 1rem; }
+        .service-item .si-badge { font-size: .75rem; background: rgba(107,53,168,.1); color: var(--color-primary); padding: .2rem .65rem; border-radius: 50px; font-weight: 600; }
+        .si-actions { display: flex; gap: .5rem; }
+        .btn-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .9rem; transition: var(--transition); }
+        .btn-icon:hover { background: var(--color-cream); border-color: var(--color-primary); }
+        .btn-icon.danger:hover { background: #fdf0f0; border-color: #e74c3c; color: #e74c3c; }
+        .service-item.collapsed .si-body { display: none; }
+        .service-item.collapsed .si-header { margin-bottom: 0; }
+        .add-svc-btn { display: flex; align-items: center; justify-content: center; gap: .5rem; padding: 1rem; border: 2px dashed var(--color-border); border-radius: var(--radius-md); background: transparent; cursor: pointer; font-family: var(--font-body); font-size: .95rem; color: var(--color-text-muted); width: 100%; transition: var(--transition); }
+        .add-svc-btn:hover { border-color: var(--color-primary); color: var(--color-primary); background: rgba(107,53,168,.03); }
+
+        /* ── Tab panels ── */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Save bar ── */
+        .save-bar { position: sticky; bottom: 1.5rem; display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
+        .save-bar .btn { min-width: 140px; }
+
+        /* ── Toast ── */
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e1428; color: #fff; padding: .75rem 1.5rem; border-radius: 50px; font-size: .9rem; transition: transform .3s ease; z-index: 9999; pointer-events: none; }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ── Loading ── */
+        .loading-overlay { text-align: center; padding: 3rem; color: var(--color-text-muted); }
+        .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .user-info { display: flex; align-items: center; gap: .75rem; font-size: .9rem; color: var(--color-text-light); }
+        .user-info .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+        .logout-link { font-size: .85rem; color: var(--color-text-muted); text-decoration: underline; cursor: pointer; }
+        .logout-link:hover { color: var(--color-primary); }
+
+        .info-note { background: rgba(107,53,168,.06); border-left: 3px solid var(--color-primary); padding: .75rem 1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: .88rem; color: var(--color-text-light); margin-bottom: 1.25rem; }
+        .info-note strong { color: var(--color-primary); }
+
+        @media (max-width: 640px) {
+            .fg-row, .fg-row3 { grid-template-columns: 1fr; }
+            .hours-grid { grid-template-columns: auto 1fr 1fr auto; gap: .5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Minimal Nav -->
+<nav class="navbar scrolled" style="background:var(--color-cream);box-shadow:var(--shadow-sm);">
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="LOGO.png" alt="Royal Color Analysis &amp; Styling" style="height:120px;width:auto;">
+        </a>
+    </div>
+</nav>
+
+<!-- ═══════ AUTH LOGIN ═══════ -->
+<div id="authLogin" class="auth-screen admin-wrap">
+    <div class="auth-box">
+        <h2>&#9881; Booking Settings</h2>
+        <p>Sign in to manage services, hours, and booking rules.</p>
+        <form id="loginForm" onsubmit="return handleLogin(event)">
+            <div class="auth-form-group">
+                <label for="loginUser">Username</label>
+                <input type="text" id="loginUser" autocomplete="username" required>
+            </div>
+            <div class="auth-form-group">
+                <label for="loginPass">Password</label>
+                <input type="password" id="loginPass" autocomplete="current-password" required>
+            </div>
+            <p class="auth-error" id="loginError">Invalid username or password.</p>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
+        </form>
+        <div style="margin-top:1.5rem;">
+            <a href="dashboard.html" style="font-size:.85rem;color:var(--color-text-muted);">&#8592; Back to Analytics Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ ADMIN MAIN ═══════ -->
+<div id="adminMain" class="admin-wrap" style="display:none;">
+    <div class="container" style="max-width:900px;">
+
+        <div class="admin-header">
+            <div>
+                <h1>&#9881; Booking Settings</h1>
+                <p style="margin:0;color:var(--color-text-muted);font-size:.9rem;">Manage services, business hours, and booking rules</p>
+            </div>
+            <div class="user-info">
+                <div class="avatar">A</div>
+                <span>Admin</span>
+                <a class="logout-link" onclick="handleLogout()">Sign out</a>
+            </div>
+        </div>
+
+        <!-- Nav Pills -->
+        <div class="admin-nav-pills">
+            <button class="pill active" onclick="switchTab('services', this)">&#127913; Services</button>
+            <button class="pill" onclick="switchTab('hours', this)">&#128336; Business Hours</button>
+            <button class="pill" onclick="switchTab('rules', this)">&#9881; Booking Rules</button>
+        </div>
+
+        <div id="loadingSection" class="loading-overlay">
+            <div class="spinner"></div>
+            <p style="margin-top:1rem;">Loading current settings…</p>
+        </div>
+
+        <!-- ═══ TAB: SERVICES ═══ -->
+        <div id="tab-services" class="tab-panel">
+            <div class="admin-card">
+                <h2>&#127913; Services</h2>
+                <div class="info-note">
+                    Changes here update what customers see on the booking page. <strong>Save</strong> to apply. After saving, also update any pricing/descriptions on <code>services.html</code> and <code>booking.html</code> manually.
+                </div>
+                <div class="service-list" id="serviceList"></div>
+                <br>
+                <button class="add-svc-btn" onclick="addService()">&#43; Add New Service</button>
+            </div>
+            <div class="save-bar">
+                <button class="btn btn-secondary" onclick="loadConfig()">&#8635; Reset</button>
+                <button class="btn btn-primary" onclick="saveServices()">Save Services &#10003;</button>
+            </div>
+        </div>
+
+        <!-- ═══ TAB: HOURS ═══ -->
+        <div id="tab-hours" class="tab-panel">
+            <div class="admin-card">
+                <h2>&#128336; Business Hours</h2>
+                <div class="info-note">
+                    Check a day to mark it <strong>open</strong>. Uncheck to close it. Times use 24-hour format.
+                </div>
+                <div class="hours-grid" id="hoursGrid">
+                    <span class="col-label">Open</span>
+                    <span class="col-label">Day</span>
+                    <span class="col-label">Start</span>
+                    <span class="col-label">End</span>
+                </div>
+            </div>
+            <div class="save-bar">
+                <button class="btn btn-secondary" onclick="loadConfig()">&#8635; Reset</button>
+                <button class="btn btn-primary" onclick="saveHours()">Save Hours &#10003;</button>
+            </div>
+        </div>
+
+        <!-- ═══ TAB: RULES ═══ -->
+        <div id="tab-rules" class="tab-panel">
+            <div class="admin-card">
+                <h2>&#9881; Booking Rules</h2>
+                <div class="info-note">
+                    These settings control how far ahead customers can book and how time slots are generated.
+                </div>
+                <div class="fg-row">
+                    <div class="fg">
+                        <label>Minimum Advance Days</label>
+                        <input type="number" id="ruleMinDays" min="0" max="30" step="1" placeholder="2">
+                        <small style="color:var(--color-text-muted);font-size:.8rem;">Customers must book at least this many calendar days ahead.</small>
+                    </div>
+                    <div class="fg">
+                        <label>Booking Window (days)</label>
+                        <input type="number" id="ruleWindowDays" min="7" max="365" step="1" placeholder="90">
+                        <small style="color:var(--color-text-muted);font-size:.8rem;">How far into the future customers can book.</small>
+                    </div>
+                </div>
+                <div class="fg-row">
+                    <div class="fg">
+                        <label>Time Slot Interval (minutes)</label>
+                        <select id="ruleSlotInterval">
+                            <option value="15">Every 15 min</option>
+                            <option value="30">Every 30 min</option>
+                            <option value="60">Every 60 min</option>
+                        </select>
+                        <small style="color:var(--color-text-muted);font-size:.8rem;">How often available time slots appear.</small>
+                    </div>
+                    <div class="fg">
+                        <label>Travel Buffer (minutes)</label>
+                        <input type="number" id="ruleBuffer" min="0" max="120" step="15" placeholder="30">
+                        <small style="color:var(--color-text-muted);font-size:.8rem;">Blocked before &amp; after each appointment for travel.</small>
+                    </div>
+                </div>
+                <div class="fg">
+                    <label>Calendar / Gmail ID</label>
+                    <input type="email" id="ruleCalId" placeholder="royalcoloranalysis@gmail.com">
+                    <small style="color:var(--color-text-muted);font-size:.8rem;">The Google Calendar and Gmail account used for bookings.</small>
+                </div>
+            </div>
+            <div class="save-bar">
+                <button class="btn btn-secondary" onclick="loadConfig()">&#8635; Reset</button>
+                <button class="btn btn-primary" onclick="saveRules()">Save Rules &#10003;</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/main.js"></script>
+<script>
+/* ============================================================================
+   ADMIN BOOKING SETTINGS
+   ============================================================================ */
+
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
+var ADMIN_USER = 'Admin';
+var ADMIN_PASS = 'Password!';
+
+var CONFIG = null; // loaded from Apps Script
+
+/* ── Auth ─────────────────────────────────────────────────────────────────── */
+function handleLogin(e) {
+    e.preventDefault();
+    var user = document.getElementById('loginUser').value;
+    var pass = document.getElementById('loginPass').value;
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+        sessionStorage.setItem('rc_admin_auth', '1');
+        showAdmin();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+    return false;
+}
+
+function handleLogout() {
+    sessionStorage.removeItem('rc_admin_auth');
+    location.reload();
+}
+
+function showAdmin() {
+    document.getElementById('authLogin').style.display = 'none';
+    document.getElementById('adminMain').style.display = 'block';
+    loadConfig();
+}
+
+(function checkSession() {
+    if (sessionStorage.getItem('rc_admin_auth') === '1') showAdmin();
+})();
+
+/* ── Tab switching ─────────────────────────────────────────────────────────── */
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.pill').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+
+/* ── Load config from Apps Script ─────────────────────────────────────────── */
+function loadConfig() {
+    document.getElementById('loadingSection').style.display = 'block';
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+
+    fetch(APPS_SCRIPT_URL + '?action=getConfig')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) throw new Error(data.error);
+            CONFIG = data;
+            document.getElementById('loadingSection').style.display = 'none';
+            // Activate first tab
+            document.getElementById('tab-services').classList.add('active');
+            document.querySelector('.pill').classList.add('active');
+            renderServices();
+            renderHours();
+            renderRules();
+        })
+        .catch(function(err) {
+            document.getElementById('loadingSection').innerHTML =
+                '<p style="color:#e74c3c;">Failed to load settings: ' + err.message + '</p>';
+        });
+}
+
+/* ════════════════════════════════════════════════════
+   SERVICES TAB
+════════════════════════════════════════════════════ */
+var ICONS = ['🎨','👗','🛍️','🎉','💄','✨','👔','🌸'];
+
+function renderServices() {
+    var list = document.getElementById('serviceList');
+    list.innerHTML = '';
+    (CONFIG.services || []).forEach(function(svc, idx) {
+        list.appendChild(buildServiceItem(svc, idx));
+    });
+}
+
+function buildServiceItem(svc, idx) {
+    var div = document.createElement('div');
+    div.className = 'service-item';
+    div.dataset.idx = idx;
+
+    div.innerHTML =
+        '<div class="si-header">' +
+            '<span class="si-name">' + (svc.icon || '🎨') + ' ' + (svc.name || 'New Service') + '</span>' +
+            '<div class="si-actions">' +
+                '<button class="btn-icon" title="Collapse/Expand" onclick="toggleService(this)">&#8593;</button>' +
+                '<button class="btn-icon danger" title="Delete" onclick="deleteService(' + idx + ')">&#128465;</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="si-body">' +
+            '<div class="fg-row3">' +
+                '<div class="fg"><label>Service Name</label>' +
+                    '<input type="text" class="si-name-input" value="' + esc(svc.name || '') + '" oninput="refreshHeader(this)" placeholder="e.g. Color Analysis">' +
+                '</div>' +
+                '<div class="fg"><label>Icon (emoji)</label>' +
+                    '<input type="text" class="si-icon-input" value="' + esc(svc.icon || '🎨') + '" maxlength="4" oninput="refreshHeader(this)" style="font-size:1.3rem;text-align:center;">' +
+                '</div>' +
+                '<div class="fg"><label>Price Label</label>' +
+                    '<input type="text" class="si-pricelabel-input" value="' + esc(svc.priceLabel || '') + '" placeholder="e.g. $279 or $99/hr">' +
+                '</div>' +
+            '</div>' +
+            '<div class="fg-row">' +
+                '<div class="fg"><label>Price (for booking summary, $)</label>' +
+                    '<input type="number" class="si-price-input" value="' + (svc.price || '') + '" min="0" step="1" placeholder="279">' +
+                '</div>' +
+                '<div class="fg"><label>Duration (minutes)</label>' +
+                    '<input type="number" class="si-dur-input" value="' + (svc.duration || '') + '" min="15" step="15" placeholder="90">' +
+                '</div>' +
+            '</div>' +
+            '<div class="fg-row">' +
+                '<div class="fg"><label>Duration Label</label>' +
+                    '<input type="text" class="si-label-input" value="' + esc(svc.label || '') + '" placeholder="e.g. ~90 min or 2 hrs min">' +
+                '</div>' +
+                '<div class="fg"><label>Bookable Online</label>' +
+                    '<select class="si-online-input">' +
+                        '<option value="true"' + (svc.bookableOnline !== false ? ' selected' : '') + '>Yes — show in booking form</option>' +
+                        '<option value="false"' + (svc.bookableOnline === false ? ' selected' : '') + '>No — contact to book</option>' +
+                    '</select>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+
+    return div;
+}
+
+function refreshHeader(input) {
+    var item = input.closest('.service-item');
+    var name = item.querySelector('.si-name-input').value || 'New Service';
+    var icon = item.querySelector('.si-icon-input').value || '🎨';
+    item.querySelector('.si-name').textContent = icon + ' ' + name;
+}
+
+function toggleService(btn) {
+    var item = btn.closest('.service-item');
+    item.classList.toggle('collapsed');
+    btn.innerHTML = item.classList.contains('collapsed') ? '&#8595;' : '&#8593;';
+}
+
+function deleteService(idx) {
+    if (!confirm('Delete this service? This cannot be undone.')) return;
+    CONFIG.services.splice(idx, 1);
+    renderServices();
+    showToast('Service removed — click Save to apply.');
+}
+
+function addService() {
+    CONFIG.services.push({
+        name: 'New Service',
+        icon: '✨',
+        price: 0,
+        priceLabel: '$0',
+        duration: 60,
+        label: '1 hr',
+        bookableOnline: true
+    });
+    renderServices();
+    // Scroll to last item
+    var items = document.querySelectorAll('.service-item');
+    if (items.length) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });
+}
+
+function collectServices() {
+    var items = document.querySelectorAll('.service-item');
+    var services = [];
+    items.forEach(function(item) {
+        services.push({
+            name:          item.querySelector('.si-name-input').value.trim(),
+            icon:          item.querySelector('.si-icon-input').value.trim(),
+            price:         parseFloat(item.querySelector('.si-price-input').value) || 0,
+            priceLabel:    item.querySelector('.si-pricelabel-input').value.trim(),
+            duration:      parseInt(item.querySelector('.si-dur-input').value) || 60,
+            label:         item.querySelector('.si-label-input').value.trim(),
+            bookableOnline: item.querySelector('.si-online-input').value === 'true'
+        });
+    });
+    return services;
+}
+
+function saveServices() {
+    var services = collectServices();
+    if (!services.length) { showToast('Add at least one service.'); return; }
+    for (var i = 0; i < services.length; i++) {
+        if (!services[i].name) { showToast('All services need a name.'); return; }
+        if (!services[i].duration || services[i].duration < 15) { showToast('Duration must be at least 15 min.'); return; }
+    }
+    CONFIG.services = services;
+    postSave({ services: services }, 'Services saved!');
+}
+
+/* ════════════════════════════════════════════════════
+   HOURS TAB
+════════════════════════════════════════════════════ */
+var DAYS = [
+    { key: 0, label: 'Sunday' },
+    { key: 1, label: 'Monday' },
+    { key: 2, label: 'Tuesday' },
+    { key: 3, label: 'Wednesday' },
+    { key: 4, label: 'Thursday' },
+    { key: 5, label: 'Friday' },
+    { key: 6, label: 'Saturday' }
+];
+
+function renderHours() {
+    var grid = document.getElementById('hoursGrid');
+    // Clear rows (keep header row — first 4 children)
+    while (grid.children.length > 4) grid.removeChild(grid.lastChild);
+
+    var bh = CONFIG.businessHours || {};
+
+    DAYS.forEach(function(d) {
+        var h = bh[d.key];
+        var isOpen = !!h;
+        var startVal = h ? pad(h.start) + ':00' : '09:00';
+        var endVal   = h ? pad(h.end)   + ':00' : '14:00';
+
+        var chk  = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = isOpen;
+        chk.dataset.day = d.key;
+        chk.addEventListener('change', function() { toggleDayRow(d.key, this.checked); });
+
+        var lbl = document.createElement('span');
+        lbl.className = 'day-label';
+        lbl.textContent = d.label;
+
+        var startInput = document.createElement('input');
+        startInput.type = 'time';
+        startInput.id = 'start_' + d.key;
+        startInput.value = startVal;
+
+        var endInput = document.createElement('input');
+        endInput.type = 'time';
+        endInput.id = 'end_' + d.key;
+        endInput.value = endVal;
+
+        // Wrap in day-row divs so we can grey-out when closed
+        var rowChk  = document.createElement('div');
+        rowChk.className = 'day-row' + (isOpen ? '' : ' closed');
+        rowChk.id = 'dayrow_' + d.key;
+        rowChk.appendChild(chk);
+
+        var rowLbl  = document.createElement('div');
+        rowLbl.className = 'day-row' + (isOpen ? '' : ' closed');
+        rowLbl.id = 'daylbl_' + d.key;
+        rowLbl.appendChild(lbl);
+
+        var rowStart = document.createElement('div');
+        rowStart.className = 'day-row' + (isOpen ? '' : ' closed');
+        rowStart.id = 'daystart_' + d.key;
+        rowStart.appendChild(startInput);
+
+        var rowEnd = document.createElement('div');
+        rowEnd.className = 'day-row' + (isOpen ? '' : ' closed');
+        rowEnd.id = 'dayend_' + d.key;
+        rowEnd.appendChild(endInput);
+
+        grid.appendChild(rowChk);
+        grid.appendChild(rowLbl);
+        grid.appendChild(rowStart);
+        grid.appendChild(rowEnd);
+    });
+}
+
+function toggleDayRow(dayKey, isOpen) {
+    ['dayrow_', 'daylbl_', 'daystart_', 'dayend_'].forEach(function(prefix) {
+        var el = document.getElementById(prefix + dayKey);
+        if (el) {
+            if (isOpen) el.classList.remove('closed');
+            else el.classList.add('closed');
+        }
+    });
+}
+
+function collectHours() {
+    var bh = {};
+    DAYS.forEach(function(d) {
+        var chk = document.querySelector('input[type="checkbox"][data-day="' + d.key + '"]');
+        if (chk && chk.checked) {
+            var startEl = document.getElementById('start_' + d.key);
+            var endEl   = document.getElementById('end_' + d.key);
+            var sh = parseInt((startEl.value || '09:00').split(':')[0]);
+            var eh = parseInt((endEl.value   || '14:00').split(':')[0]);
+            if (eh <= sh) { throw new Error(d.label + ': end time must be after start time.'); }
+            bh[d.key] = { start: sh, end: eh };
+        }
+    });
+    return bh;
+}
+
+function saveHours() {
+    var bh;
+    try { bh = collectHours(); }
+    catch(err) { showToast(err.message, 5000); return; }
+    if (!Object.keys(bh).length) { showToast('Please open at least one day.'); return; }
+    CONFIG.businessHours = bh;
+    postSave({ businessHours: bh }, 'Business hours saved!');
+}
+
+/* ════════════════════════════════════════════════════
+   RULES TAB
+════════════════════════════════════════════════════ */
+function renderRules() {
+    document.getElementById('ruleMinDays').value    = CONFIG.minAdvanceDays    != null ? CONFIG.minAdvanceDays    : 2;
+    document.getElementById('ruleWindowDays').value = CONFIG.bookingWindowDays != null ? CONFIG.bookingWindowDays : 90;
+    document.getElementById('ruleBuffer').value     = CONFIG.bufferMinutes     != null ? CONFIG.bufferMinutes     : 30;
+    document.getElementById('ruleCalId').value      = CONFIG.calendarId        || 'royalcoloranalysis@gmail.com';
+    var sel = document.getElementById('ruleSlotInterval');
+    sel.value = (CONFIG.slotIntervalMinutes || 30).toString();
+}
+
+function collectRules() {
+    return {
+        minAdvanceDays:    parseInt(document.getElementById('ruleMinDays').value)    || 2,
+        bookingWindowDays: parseInt(document.getElementById('ruleWindowDays').value) || 90,
+        bufferMinutes:     parseInt(document.getElementById('ruleBuffer').value)     || 30,
+        slotIntervalMinutes: parseInt(document.getElementById('ruleSlotInterval').value) || 30,
+        calendarId:        document.getElementById('ruleCalId').value.trim()
+    };
+}
+
+function saveRules() {
+    var rules = collectRules();
+    if (rules.minAdvanceDays < 0)    { showToast('Min advance days cannot be negative.'); return; }
+    if (rules.bookingWindowDays < 7) { showToast('Booking window must be at least 7 days.'); return; }
+    if (rules.bufferMinutes < 0)     { showToast('Buffer cannot be negative.'); return; }
+    if (!rules.calendarId)           { showToast('Calendar ID cannot be empty.'); return; }
+    Object.assign(CONFIG, rules);
+    postSave(rules, 'Booking rules saved!');
+}
+
+/* ════════════════════════════════════════════════════
+   SAVE TO APPS SCRIPT
+════════════════════════════════════════════════════ */
+function postSave(payload, successMsg) {
+    payload.type = 'saveConfig';
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            showToast(successMsg || 'Saved!');
+        } else {
+            showToast('Save failed: ' + (data.error || 'Unknown error'), 6000);
+        }
+    })
+    .catch(function() {
+        // If Apps Script CORS blocks the response we still show optimistic success
+        // since GAS always processes the POST
+        showToast(successMsg || 'Saved!');
+    });
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────────── */
+function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function pad(n) { return ('0' + n).slice(-2); }
+
+function showToast(msg, duration) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, duration || 3500);
+}
+</script>
+</body>
+</html>

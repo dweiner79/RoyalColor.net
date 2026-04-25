@@ -179,21 +179,10 @@
         <div class="booking-panel active" id="panel1">
             <h3 class="text-center" style="margin-bottom:.4rem;">Which service are you interested in?</h3>
             <p class="text-center" style="color:var(--color-text-muted);margin-bottom:2rem;">Select one to continue.</p>
-            <p class="text-center" style="color:var(--color-primary);font-size:.9rem;margin-bottom:1.5rem;">&#9432; Appointments must be booked at least 2 days in advance.</p>
+            <p class="text-center" id="advanceNotice" style="color:var(--color-primary);font-size:.9rem;margin-bottom:1.5rem;">&#9432; Appointments must be booked at least 2 days in advance.</p>
 
-            <div class="svc-grid">
-                <div class="svc-tile" onclick="pickService(this)" data-name="Color Analysis" data-price="279" data-dur="90" data-icon="&#127912;" data-label="~90 min">
-                    <div class="t-icon">&#127912;</div><h4>Color Analysis</h4>
-                    <div class="t-price">$279</div><div class="t-dur">~90 minutes</div><div class="t-chk">&#10003; Selected</div>
-                </div>
-                <div class="svc-tile" onclick="pickService(this)" data-name="Wardrobe Edit" data-price="198" data-dur="120" data-icon="&#128090;" data-label="2 hrs min">
-                    <div class="t-icon">&#128090;</div><h4>Wardrobe Edit</h4>
-                    <div class="t-price">$99/hr</div><div class="t-dur">2-hr minimum</div><div class="t-chk">&#10003; Selected</div>
-                </div>
-                <div class="svc-tile" onclick="pickService(this)" data-name="Personal Shopping" data-price="198" data-dur="120" data-icon="&#128717;" data-label="2 hrs min">
-                    <div class="t-icon">&#128717;</div><h4>Personal Shopping</h4>
-                    <div class="t-price">$99/hr</div><div class="t-dur">2-hr minimum</div><div class="t-chk">&#10003; Selected</div>
-                </div>
+            <div class="svc-grid" id="svcGrid">
+                <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--color-text-muted);">Loading services&#8230;</div>
             </div>
 
             <div class="text-center">
@@ -412,7 +401,63 @@
    CONFIGURATION — Replace the URL below with your deployed Apps Script
    ==================================================================== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-var MIN_ADVANCE_DAYS = 2;  // must match Apps Script config (calendar days, not hours)
+var MIN_ADVANCE_DAYS = 2;  // updated from config on load
+
+/* ====================================================================
+   LOAD BOOKING CONFIG (services + rules) ON PAGE LOAD
+   ==================================================================== */
+(function loadBookingConfig() {
+    fetch(APPS_SCRIPT_URL + '?action=getConfig')
+        .then(function(r) { return r.json(); })
+        .then(function(cfg) {
+            if (cfg.error) throw new Error(cfg.error);
+            // Update advance days for client-side calendar blocking
+            if (cfg.minAdvanceDays != null) MIN_ADVANCE_DAYS = cfg.minAdvanceDays;
+            // Update advance notice text
+            var notice = document.getElementById('advanceNotice');
+            if (notice && cfg.minAdvanceDays != null) {
+                notice.textContent = '\u2139 Appointments must be booked at least ' + cfg.minAdvanceDays + ' day' + (cfg.minAdvanceDays !== 1 ? 's' : '') + ' in advance.';
+            }
+            // Render services
+            renderServiceTiles(cfg.services || []);
+        })
+        .catch(function() {
+            // Fallback to hardcoded defaults if API unavailable
+            renderServiceTiles([
+                { name: 'Color Analysis',    icon: '\uD83C\uDFA8', price: 279, priceLabel: '$279',   duration: 90,  label: '~90 min',   bookableOnline: true },
+                { name: 'Wardrobe Edit',     icon: '\uD83D\uDC5A', price: 198, priceLabel: '$99/hr', duration: 120, label: '2 hrs min', bookableOnline: true },
+                { name: 'Personal Shopping', icon: '\uD83D\uDED2', price: 198, priceLabel: '$99/hr', duration: 120, label: '2 hrs min', bookableOnline: true }
+            ]);
+        });
+})();
+
+function renderServiceTiles(services) {
+    var grid = document.getElementById('svcGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var online = services.filter(function(s) { return s.bookableOnline !== false; });
+    if (!online.length) {
+        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);">No services available for online booking.</p>';
+        return;
+    }
+    online.forEach(function(svc) {
+        var tile = document.createElement('div');
+        tile.className = 'svc-tile';
+        tile.dataset.name  = svc.name;
+        tile.dataset.price = svc.price || 0;
+        tile.dataset.dur   = svc.duration || 60;
+        tile.dataset.icon  = svc.icon || '\uD83C\uDFA8';
+        tile.dataset.label = svc.label || '';
+        tile.onclick = function() { pickService(this); };
+        tile.innerHTML =
+            '<div class="t-icon">' + (svc.icon || '\uD83C\uDFA8') + '</div>' +
+            '<h4>' + svc.name + '</h4>' +
+            '<div class="t-price">' + (svc.priceLabel || ('$' + svc.price)) + '</div>' +
+            '<div class="t-dur">' + (svc.label || (svc.duration + ' min')) + '</div>' +
+            '<div class="t-chk">\u2713 Selected</div>';
+        grid.appendChild(tile);
+    });
+}
 
 /* ====================================================================
    STATE

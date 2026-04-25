@@ -86,6 +86,10 @@ function doGet(e) {
         // Returns aggregated analytics for the dashboard
         result = getAnalyticsData(p.days ? parseInt(p.days) : 30);
         break;
+      case 'getConfig':
+        // Returns current booking configuration
+        result = getBookingConfig();
+        break;
       default:
         result = { error: 'Unknown action' };
     }
@@ -105,6 +109,9 @@ function doPost(e) {
     if (data.type === 'analytics') {
       // Analytics beacon — log and return quickly
       result = logAnalyticsEvent(data);
+    } else if (data.type === 'saveConfig') {
+      // Admin config save
+      result = saveBookingConfig(data);
     } else {
       // Booking request
       result = createBooking(data);
@@ -175,6 +182,7 @@ function isSlotFree(slotStartMs, durationMin, busyPeriods) {
  * One call gives the client everything needed — no second fetch.
  */
 function getMonthWithSlots(year, month, durationMin) {
+  var liveConfig = getBookingConfig();
   var lastDay  = new Date(year, month, 0);
   var numDays  = lastDay.getDate();
 
@@ -187,13 +195,12 @@ function getMonthWithSlots(year, month, durationMin) {
   var today = new Date(now);
   today.setHours(0, 0, 0, 0);
 
-  // 2 calendar days: if today is Mon, earliest bookable is Wed (all slots)
   var earliest = new Date(now);
-  earliest.setDate(earliest.getDate() + CONFIG.MIN_ADVANCE_DAYS);
+  earliest.setDate(earliest.getDate() + liveConfig.minAdvanceDays);
   earliest.setHours(0, 0, 0, 0);
 
   var maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + CONFIG.BOOKING_WINDOW_DAYS);
+  maxDate.setDate(maxDate.getDate() + liveConfig.bookingWindowDays);
 
   var availability = {};
   var allSlots = {};
@@ -204,12 +211,12 @@ function getMonthWithSlots(year, month, durationMin) {
 
     if (date < today || date > maxDate) { availability[key] = false; continue; }
 
-    var hours = getBusinessHours(date.getDay());
+    var hours = (liveConfig.businessHours || {})[date.getDay()];
     if (!hours) { availability[key] = false; continue; }
 
     var daySlots = [];
     for (var h = hours.start; h <= hours.end; h++) {
-      for (var m = 0; m < 60; m += CONFIG.SLOT_INTERVAL_MINUTES) {
+      for (var m = 0; m < 60; m += liveConfig.slotIntervalMinutes) {
         var st  = new Date(year, month - 1, d, h, m, 0);
         if (st < earliest) continue;
         if (st > new Date(year, month - 1, d, hours.end, 0, 0)) continue;
@@ -228,10 +235,11 @@ function getMonthWithSlots(year, month, durationMin) {
 // ============ TIME SLOTS FOR A DATE (backward compat) ============
 
 function getAvailableSlots(dateStr, durationMin) {
+  var liveConfig = getBookingConfig();
   var p = dateStr.split('-');
   var year = parseInt(p[0]), month = parseInt(p[1]) - 1, day = parseInt(p[2]);
 
-  var hours = getBusinessHours(new Date(year, month, day).getDay());
+  var hours = (liveConfig.businessHours || {})[new Date(year, month, day).getDay()];
   if (!hours) return { slots: [] };
 
   var busy = getBusyPeriods(
@@ -240,12 +248,12 @@ function getAvailableSlots(dateStr, durationMin) {
   );
 
   var earliest = new Date();
-  earliest.setDate(earliest.getDate() + CONFIG.MIN_ADVANCE_DAYS);
+  earliest.setDate(earliest.getDate() + liveConfig.minAdvanceDays);
   earliest.setHours(0, 0, 0, 0);
 
   var slots = [];
   for (var h = hours.start; h <= hours.end; h++) {
-    for (var m = 0; m < 60; m += CONFIG.SLOT_INTERVAL_MINUTES) {
+    for (var m = 0; m < 60; m += liveConfig.slotIntervalMinutes) {
       var st  = new Date(year, month, day, h, m, 0);
       if (st < earliest) continue;
       if (st > new Date(year, month, day, hours.end, 0, 0)) continue;
@@ -260,7 +268,10 @@ function getAvailableSlots(dateStr, durationMin) {
 // ============ CREATE BOOKING ============
 
 function createBooking(data) {
-  // data: { date, time, service, duration, name, email, phone, notes, paypalOrderId }
+  // data: { date, time, service, duration, name, email, phone, notes, promoCode }
+
+  // Load live config (may have been updated via admin without redeployment)
+  var liveConfig = getBookingConfig();
 
   var dp = data.date.split('-'), tp = data.time.split(':');
   var year = parseInt(dp[0]), month = parseInt(dp[1]) - 1, day = parseInt(dp[2]);
@@ -268,12 +279,12 @@ function createBooking(data) {
 
   var startTime  = new Date(year, month, day, hour, minute, 0);
   var durMs      = data.duration * 60000;
-  var bufMs      = CONFIG.BUFFER_MINUTES * 60000;
+  var bufMs      = liveConfig.bufferMinutes * 60000;
   var endTime    = new Date(startTime.getTime() + durMs);
 
-  // Enforce 2 calendar day advance booking
+  // Enforce minimum advance booking days
   var earliest = new Date();
-  earliest.setDate(earliest.getDate() + CONFIG.MIN_ADVANCE_DAYS);
+  earliest.setDate(earliest.getDate() + liveConfig.minAdvanceDays);
   earliest.setHours(0, 0, 0, 0);
   if (startTime < earliest) {
     return { success: false, error: 'Bookings must be made at least 2 days in advance.' };
@@ -355,6 +366,89 @@ function createBooking(data) {
 
 // ============ UTILITY ============
 function pad(n) { return ('0' + n).slice(-2); }
+
+// ============ BOOKING CONFIG — READ / WRITE ============
+
+/**
+ * Returns the current booking configuration from Script Properties.
+ * Falls back to CONFIG defaults if nothing has been saved yet.
+ */
+function getBookingConfig() {
+  var props = PropertiesService.getScriptProperties();
+  var stored = props.getProperty('BOOKING_CONFIG');
+  var base = {
+    calendarId:          CONFIG.CALENDAR_ID,
+    businessHours:       CONFIG.BUSINESS_HOURS,
+    bufferMinutes:       CONFIG.BUFFER_MINUTES,
+    slotIntervalMinutes: CONFIG.SLOT_INTERVAL_MINUTES,
+    bookingWindowDays:   CONFIG.BOOKING_WINDOW_DAYS,
+    minAdvanceDays:      CONFIG.MIN_ADVANCE_DAYS,
+    services:            getDefaultServices()
+  };
+  if (!stored) return base;
+  try {
+    var parsed = JSON.parse(stored);
+    // Merge — stored values override defaults
+    return {
+      calendarId:          parsed.calendarId          || base.calendarId,
+      businessHours:       parsed.businessHours       || base.businessHours,
+      bufferMinutes:       parsed.bufferMinutes        != null ? parsed.bufferMinutes        : base.bufferMinutes,
+      slotIntervalMinutes: parsed.slotIntervalMinutes  != null ? parsed.slotIntervalMinutes  : base.slotIntervalMinutes,
+      bookingWindowDays:   parsed.bookingWindowDays    != null ? parsed.bookingWindowDays    : base.bookingWindowDays,
+      minAdvanceDays:      parsed.minAdvanceDays       != null ? parsed.minAdvanceDays       : base.minAdvanceDays,
+      services:            parsed.services             || base.services
+    };
+  } catch(e) {
+    return base;
+  }
+}
+
+/**
+ * Persists a partial config update to Script Properties.
+ * Only keys present in data are updated; others are preserved.
+ */
+function saveBookingConfig(data) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var current = getBookingConfig();
+
+    if (data.services            !== undefined) current.services            = data.services;
+    if (data.businessHours       !== undefined) current.businessHours       = data.businessHours;
+    if (data.bufferMinutes       !== undefined) current.bufferMinutes       = data.bufferMinutes;
+    if (data.slotIntervalMinutes !== undefined) current.slotIntervalMinutes = data.slotIntervalMinutes;
+    if (data.bookingWindowDays   !== undefined) current.bookingWindowDays   = data.bookingWindowDays;
+    if (data.minAdvanceDays      !== undefined) current.minAdvanceDays      = data.minAdvanceDays;
+    if (data.calendarId          !== undefined) current.calendarId          = data.calendarId;
+
+    // Apply live to CONFIG so the same deployment uses the new values immediately
+    if (data.businessHours)       CONFIG.BUSINESS_HOURS       = current.businessHours;
+    if (data.bufferMinutes        != null) CONFIG.BUFFER_MINUTES       = current.bufferMinutes;
+    if (data.slotIntervalMinutes  != null) CONFIG.SLOT_INTERVAL_MINUTES= current.slotIntervalMinutes;
+    if (data.bookingWindowDays    != null) CONFIG.BOOKING_WINDOW_DAYS  = current.bookingWindowDays;
+    if (data.minAdvanceDays       != null) CONFIG.MIN_ADVANCE_DAYS     = current.minAdvanceDays;
+    if (data.calendarId)          CONFIG.CALENDAR_ID          = current.calendarId;
+
+    // Clear availability cache so next booking fetch uses new config
+    CacheService.getScriptCache().removeAll([]);
+
+    props.setProperty('BOOKING_CONFIG', JSON.stringify(current));
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Default services list — used when no saved config exists.
+ */
+function getDefaultServices() {
+  return [
+    { name: 'Color Analysis',    icon: '\uD83C\uDFA8', price: 279, priceLabel: '$279',      duration: 90,  label: '~90 min',    bookableOnline: true },
+    { name: 'Wardrobe Edit',     icon: '\uD83D\uDC5A', price: 198, priceLabel: '$99/hr',    duration: 120, label: '2 hrs min',  bookableOnline: true },
+    { name: 'Personal Shopping', icon: '\uD83D\uDED2', price: 198, priceLabel: '$99/hr',    duration: 120, label: '2 hrs min',  bookableOnline: true },
+    { name: 'Group Color Party', icon: '\uD83C\uDF89', price: 225, priceLabel: '$225/person',duration: 120, label: 'By inquiry', bookableOnline: false }
+  ];
+}
 
 // ============ ANALYTICS — LOG EVENTS ============
 
