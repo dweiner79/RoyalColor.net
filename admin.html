@@ -307,20 +307,41 @@ function loadConfig() {
     fetch(APPS_SCRIPT_URL + '?action=getConfig')
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.error) throw new Error(data.error);
-            CONFIG = data;
-            document.getElementById('loadingSection').style.display = 'none';
-            // Activate first tab
-            document.getElementById('tab-services').classList.add('active');
-            document.querySelector('.pill').classList.add('active');
-            renderServices();
-            renderHours();
-            renderRules();
+            // If getConfig isn't deployed yet, fall back to defaults
+            CONFIG = data.error ? getDefaultConfig() : data;
+            showTabs();
         })
-        .catch(function(err) {
-            document.getElementById('loadingSection').innerHTML =
-                '<p style="color:#e74c3c;">Failed to load settings: ' + err.message + '</p>';
+        .catch(function() {
+            // Network error or GAS not yet redeployed — use defaults
+            CONFIG = getDefaultConfig();
+            showTabs();
         });
+}
+
+function showTabs() {
+    document.getElementById('loadingSection').style.display = 'none';
+    document.getElementById('tab-services').classList.add('active');
+    document.querySelector('.pill').classList.add('active');
+    renderServices();
+    renderHours();
+    renderRules();
+}
+
+function getDefaultConfig() {
+    return {
+        calendarId: 'royalcoloranalysis@gmail.com',
+        businessHours: { 1:{start:9,end:14}, 2:{start:9,end:14}, 3:{start:9,end:14}, 4:{start:9,end:14}, 5:{start:9,end:14}, 6:{start:10,end:14} },
+        bufferMinutes: 30,
+        slotIntervalMinutes: 30,
+        bookingWindowDays: 90,
+        minAdvanceDays: 2,
+        services: [
+            { name:'Color Analysis',    icon:'\uD83C\uDFA8', price:279, priceLabel:'$279',      duration:90,  label:'~90 min',   bookableOnline:true },
+            { name:'Wardrobe Edit',     icon:'\uD83D\uDC5A', price:198, priceLabel:'$99/hr',    duration:120, label:'2 hrs min', bookableOnline:true },
+            { name:'Personal Shopping', icon:'\uD83D\uDED2', price:198, priceLabel:'$99/hr',    duration:120, label:'2 hrs min', bookableOnline:true },
+            { name:'Group Color Party', icon:'\uD83C\uDF89', price:225, priceLabel:'$225/person',duration:120, label:'By inquiry',bookableOnline:false }
+        ]
+    };
 }
 
 /* ════════════════════════════════════════════════════
