@@ -111,7 +111,7 @@
 </nav>
 
 <!-- ═══════ AUTH LOGIN ═══════ -->
-<div id="authLogin" class="auth-screen admin-wrap">
+<div id="authLogin" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-cream);">
     <div class="auth-box">
         <h2>&#9881; Booking Settings</h2>
         <p>Sign in to manage services, hours, and booking rules.</p>
@@ -250,7 +250,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/main.js"></script>
 <script>
 /* ============================================================================
    ADMIN BOOKING SETTINGS
@@ -645,6 +644,7 @@ function pad(n) { return ('0' + n).slice(-2); }
 
 function showToast(msg, duration) {
     var t = document.getElementById('toast');
+    if (!t) return;
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(function() { t.classList.remove('show'); }, duration || 3500);
