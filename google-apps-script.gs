@@ -84,7 +84,10 @@ function doGet(e) {
         break;
       case 'analytics':
         // Returns aggregated analytics for the dashboard
-        result = getAnalyticsData(p.days ? parseInt(p.days) : 30);
+        result = getAnalyticsData(
+          p.days  ? parseInt(p.days)  : 30,
+          p.hours ? parseInt(p.hours) : null
+        );
         break;
       case 'getConfig':
         // Returns current booking configuration
@@ -523,10 +526,10 @@ function logAnalyticsEvent(data) {
 // ============ ANALYTICS — READ / AGGREGATE ============
 
 /**
- * Returns aggregated analytics for the last N days.
- * Called from doGet with action=analytics&days=30
+ * Returns aggregated analytics for the last N days (or last H hours).
+ * Called from doGet with action=analytics&days=30  OR  action=analytics&hours=24
  */
-function getAnalyticsData(days) {
+function getAnalyticsData(days, hours) {
   var sheet;
   try {
     sheet = getOrCreateAnalyticsSheet();
@@ -542,10 +545,20 @@ function getAnalyticsData(days) {
   var numCols = Math.min(sheet.getLastColumn(), 20);
   var data = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
 
+  // Cutoff: either exact timestamp (hours mode) or midnight date (days mode)
+  var useHourCutoff = hours != null;
   var cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  cutoff.setHours(0, 0, 0, 0);
-  var cutoffStr = Utilities.formatDate(cutoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var cutoffMs, cutoffStr;
+  if (useHourCutoff) {
+    cutoff.setTime(cutoff.getTime() - hours * 3600000);
+    cutoffMs = cutoff.getTime();
+    cutoffStr = Utilities.formatDate(cutoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  } else {
+    cutoff.setDate(cutoff.getDate() - days);
+    cutoff.setHours(0, 0, 0, 0);
+    cutoffStr = Utilities.formatDate(cutoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    cutoffMs = cutoff.getTime();
+  }
 
   // Accumulators
   var pvByDay     = {};
@@ -573,7 +586,14 @@ function getAnalyticsData(days) {
     var day = row[1] instanceof Date
       ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd')
       : (row[1] || '').toString().substring(0, 10);
-    if (!day || day < cutoffStr) continue;
+
+    // For 24h mode compare exact timestamp; for day mode compare date string
+    if (useHourCutoff) {
+      var rowTs = row[0] instanceof Date ? row[0].getTime() : new Date((row[0] || '').toString()).getTime();
+      if (!rowTs || isNaN(rowTs) || rowTs < cutoffMs) continue;
+    } else {
+      if (!day || day < cutoffStr) continue;
+    }
 
     var event   = (row[2]  || '').toString();
     var url     = (row[4]  || '').toString();
