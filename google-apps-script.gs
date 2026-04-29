@@ -115,6 +115,9 @@ function doPost(e) {
     } else if (data.type === 'saveConfig') {
       // Admin config save
       result = saveBookingConfig(data);
+    } else if (data.type === 'intake') {
+      // Customer intake form (event QR-code lead capture)
+      result = logIntake(data);
     } else {
       // Booking request
       result = createBooking(data);
@@ -765,4 +768,95 @@ function getAnalyticsData(days, hours) {
     byDayOfWeek:        dowArr,
     recentActivity:     recentActivity
   };
+}
+
+// ============ CUSTOMER INTAKE (Event QR Code Lead Capture) ============
+
+/**
+ * Returns the Leads sheet (in the same spreadsheet as Analytics),
+ * creating it with headers if it doesn't exist.
+ */
+function getOrCreateLeadsSheet() {
+  var sheetId = PropertiesService.getScriptProperties().getProperty('ANALYTICS_SHEET_ID');
+  var ss;
+  if (sheetId) {
+    ss = SpreadsheetApp.openById(sheetId);
+  } else {
+    ss = SpreadsheetApp.create('Royal Color Analytics');
+    PropertiesService.getScriptProperties().setProperty('ANALYTICS_SHEET_ID', ss.getId());
+  }
+
+  var sheet = ss.getSheetByName('Leads');
+  if (!sheet) {
+    sheet = ss.insertSheet('Leads');
+    sheet.appendRow([
+      'Timestamp', 'Name', 'Phone', 'Email', 'Event/Source', 'Notes',
+      'Consent', 'IP', 'UserAgent'
+    ]);
+    sheet.setFrozenRows(1);
+    sheet.getRange('1:1').setFontWeight('bold');
+    sheet.setColumnWidth(1, 160);
+    sheet.setColumnWidth(2, 180);
+    sheet.setColumnWidth(3, 140);
+    sheet.setColumnWidth(4, 220);
+    sheet.setColumnWidth(5, 160);
+    sheet.setColumnWidth(6, 240);
+  }
+  return sheet;
+}
+
+/**
+ * Logs a new customer intake submission and emails Daphna a notification.
+ * Expected fields: name, phone, email, eventSource, notes, consent
+ */
+function logIntake(data) {
+  try {
+    var name  = (data.name  || '').toString().trim();
+    var phone = (data.phone || '').toString().trim();
+    var email = (data.email || '').toString().trim();
+
+    if (!name)  return { ok: false, error: 'Name is required.' };
+    if (!phone && !email) return { ok: false, error: 'Please provide a phone number or email.' };
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, error: 'Please enter a valid email address.' };
+    }
+
+    var sheet = getOrCreateLeadsSheet();
+    var ts = new Date();
+
+    sheet.appendRow([
+      ts,
+      name,
+      phone,
+      email,
+      (data.eventSource || '').toString(),
+      (data.notes       || '').toString(),
+      data.consent ? 'Yes' : 'No',
+      (data.ip          || '').toString(),
+      (data.userAgent   || '').toString()
+    ]);
+
+    // Email notification (best-effort)
+    try {
+      var body =
+        'New Customer Intake!\n\n' +
+        'Name:   ' + name + '\n' +
+        'Phone:  ' + (phone || '—') + '\n' +
+        'Email:  ' + (email || '—') + '\n' +
+        'Event:  ' + (data.eventSource || '—') + '\n' +
+        'Notes:  ' + (data.notes || '—') + '\n' +
+        'Consent to contact: ' + (data.consent ? 'Yes' : 'No') + '\n\n' +
+        'Logged at ' + ts.toLocaleString();
+
+      GmailApp.sendEmail(
+        CONFIG.CALENDAR_ID,
+        '✨ New Lead: ' + name + (data.eventSource ? ' (' + data.eventSource + ')' : ''),
+        body
+      );
+    } catch (e) { /* swallow */ }
+
+    return { ok: true, message: 'Thanks, ' + name.split(' ')[0] + '! You\'re on the list.' };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stay in Touch | Royal Color Analysis &amp; Styling</title>
+    <meta name="description" content="Join the Royal Color Analysis &amp; Styling list to get color tips, event invites, and special offers.">
+    <link rel="canonical" href="https://www.royalcolor.net/intake.html">
+    <meta name="robots" content="noindex,follow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body{background:linear-gradient(135deg,#fdf6f9 0%,#f7eef3 100%);min-height:100vh}
+        .intake-wrap{max-width:520px;margin:0 auto;padding:2rem 1.25rem 4rem}
+        .intake-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:2rem 1.75rem;border:1px solid var(--color-border)}
+        .intake-logo{text-align:center;margin-bottom:1.25rem}
+        .intake-logo img{height:110px;width:auto}
+        .intake-card h1{font-family:var(--font-heading);font-size:1.75rem;text-align:center;margin-bottom:.4rem;color:var(--color-primary)}
+        .intake-card .lede{text-align:center;color:var(--color-text-muted);margin-bottom:1.75rem;font-size:.98rem}
+        .intake-form .form-group{margin-bottom:1.1rem}
+        .intake-form label{display:block;font-weight:600;margin-bottom:.35rem;font-size:.92rem}
+        .intake-form label .req{color:var(--color-primary)}
+        .intake-form input,
+        .intake-form select,
+        .intake-form textarea{
+            width:100%;padding:.85rem 1rem;border:2px solid var(--color-border);
+            border-radius:var(--radius-md);font:inherit;font-size:1rem;
+            background:#fff;transition:var(--transition);
+            -webkit-appearance:none;appearance:none;
+        }
+        .intake-form input:focus,
+        .intake-form select:focus,
+        .intake-form textarea:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
+        .intake-form textarea{resize:vertical;min-height:80px}
+        .check-row{display:flex;gap:.6rem;align-items:flex-start;font-size:.9rem;color:var(--color-text-muted);margin-bottom:1.25rem;line-height:1.45}
+        .check-row input{width:auto;margin-top:.2rem;flex-shrink:0}
+        .submit-btn{width:100%;padding:1rem;font-size:1.05rem;font-weight:700}
+        .intake-msg{margin-top:1rem;padding:.9rem 1rem;border-radius:var(--radius-md);font-size:.95rem;display:none}
+        .intake-msg.error{background:#fdecea;color:#a3271a;border:1px solid #f5c4be;display:block}
+        .intake-msg.success{background:#e7f6ec;color:#1f6b3a;border:1px solid #b9dec6;display:block}
+        .thank-you{display:none;text-align:center;padding:1rem 0}
+        .thank-you .check{font-size:3.5rem;color:var(--color-primary);margin-bottom:.5rem}
+        .thank-you h2{font-family:var(--font-heading);color:var(--color-primary);margin-bottom:.5rem}
+        .thank-you p{color:var(--color-text-muted);margin-bottom:1.5rem}
+        .thank-you .again{color:var(--color-primary);text-decoration:underline;cursor:pointer;background:none;border:none;font:inherit}
+        .footer-note{text-align:center;font-size:.8rem;color:var(--color-text-muted);margin-top:1.25rem}
+        .footer-note a{color:var(--color-primary)}
+    </style>
+</head>
+<body>
+
+    <div class="intake-wrap">
+        <div class="intake-card">
+            <div class="intake-logo">
+                <img src="LOGO.png" alt="Royal Color Analysis &amp; Styling">
+            </div>
+
+            <div id="formView">
+                <h1>Let's Stay in Touch</h1>
+                <p class="lede">Drop your details and I'll send color tips, event invites, and the occasional special offer. No spam, ever.</p>
+
+                <form id="intakeForm" class="intake-form" novalidate>
+                    <div class="form-group">
+                        <label for="name">Full Name <span class="req">*</span></label>
+                        <input type="text" id="name" name="name" autocomplete="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone Number <span class="req">*</span></label>
+                        <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="(555) 123-4567" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address <span class="req">*</span></label>
+                        <input type="email" id="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Anything you'd like me to know? <span style="font-weight:400;color:var(--color-text-muted);font-size:.85rem;">(optional)</span></label>
+                        <textarea id="notes" name="notes" rows="2" placeholder="What you're hoping to learn, services you're curious about, etc."></textarea>
+                    </div>
+
+                    <label class="check-row">
+                        <input type="checkbox" id="consent" name="consent" checked>
+                        <span>It's OK to contact me by phone, text, or email about color analysis services and events.</span>
+                    </label>
+
+                    <button type="submit" id="submitBtn" class="btn btn-primary submit-btn">Sign Me Up</button>
+
+                    <div id="msg" class="intake-msg"></div>
+                </form>
+            </div>
+
+            <div id="thankYou" class="thank-you">
+                <div class="check">&#10004;</div>
+                <h2 id="thankName">You're In!</h2>
+                <p>Thanks for joining the Royal Color list. Keep an eye on your inbox &mdash; and enjoy the rest of the event!</p>
+                <button class="again" id="addAnother">Add another person</button>
+            </div>
+
+            <div class="footer-note">
+                <a href="index.html">royalcolor.net</a> &middot; South Florida
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+        var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
+
+        var form        = document.getElementById('intakeForm');
+        var submitBtn   = document.getElementById('submitBtn');
+        var msg         = document.getElementById('msg');
+        var formView    = document.getElementById('formView');
+        var thankYou    = document.getElementById('thankYou');
+        var thankName   = document.getElementById('thankName');
+        var addAnother  = document.getElementById('addAnother');
+
+        // Read event/source from URL: ?event=Vendor%20Fair%20Apr%202026
+        var params = new URLSearchParams(window.location.search);
+        var eventSource = params.get('event') || params.get('source') || '';
+
+        function showMsg(text, type) {
+            msg.textContent = text;
+            msg.className = 'intake-msg ' + type;
+        }
+        function clearMsg() { msg.className = 'intake-msg'; msg.textContent = ''; }
+
+        function isEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            clearMsg();
+
+            var name    = document.getElementById('name').value.trim();
+            var phone   = document.getElementById('phone').value.trim();
+            var email   = document.getElementById('email').value.trim();
+            var notes   = document.getElementById('notes').value.trim();
+            var consent = document.getElementById('consent').checked;
+
+            if (!name)  return showMsg('Please enter your name.', 'error');
+            if (!phone) return showMsg('Please enter your phone number.', 'error');
+            if (!email) return showMsg('Please enter your email address.', 'error');
+            if (!isEmail(email)) return showMsg('That email doesn\'t look right. Please double-check.', 'error');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            var payload = {
+                type:        'intake',
+                name:        name,
+                phone:       phone,
+                email:       email,
+                notes:       notes,
+                consent:     consent,
+                eventSource: eventSource,
+                userAgent:   navigator.userAgent
+            };
+
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                mode:   'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body:   JSON.stringify(payload)
+            }).then(function(){
+                // no-cors hides the response, so optimistically show success
+                thankName.textContent = 'Thanks, ' + name.split(' ')[0] + '!';
+                formView.style.display = 'none';
+                thankYou.style.display = 'block';
+            }).catch(function(){
+                showMsg('Something went wrong. Please try again or let Daphna know.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign Me Up';
+            });
+        });
+
+        addAnother.addEventListener('click', function(){
+            form.reset();
+            document.getElementById('consent').checked = true;
+            clearMsg();
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign Me Up';
+            thankYou.style.display = 'none';
+            formView.style.display = 'block';
+            document.getElementById('name').focus();
+        });
+    })();
+    </script>
+</body>
+</html>
