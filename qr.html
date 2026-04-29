@@ -171,31 +171,116 @@
                 + '&bgcolor=FFFFFF&margin=10&qzone=2&ecc=H&format=png';
         }
 
+        // ---- Per-destination QR color theme ----
+        function getQrTheme() {
+            var v = (destSelect.value || '').toLowerCase();
+            if (v === '__custom__') v = (customUrl.value || '').toLowerCase();
+            if (v.indexOf('instagram.com') !== -1) {
+                return { type: 'gradient', stops: [
+                    [0.00, '#FEDA75'],   // warm yellow (bottom-left)
+                    [0.25, '#FA7E1E'],   // orange
+                    [0.50, '#D62976'],   // hot pink
+                    [0.75, '#962FBF'],   // purple
+                    [1.00, '#4F5BD5']    // blue (top-right)
+                ] };
+            }
+            if (v.indexOf('royalcolor.net') !== -1) {
+                return { type: 'solid', color: '#8B2252' };  // brand purple
+            }
+            return { type: 'solid', color: '#000000' };
+        }
+
+        function hexToRgb(h) {
+            h = (h || '').replace('#','');
+            return { r: parseInt(h.substr(0,2),16),
+                     g: parseInt(h.substr(2,2),16),
+                     b: parseInt(h.substr(4,2),16) };
+        }
+
+        // Takes a black-on-white QR canvas and returns a new canvas recolored
+        // per the active theme. Source canvas must be CORS-clean.
+        function applyTheme(srcCanvas) {
+            var theme = getQrTheme();
+            var W = srcCanvas.width, H = srcCanvas.height;
+            var out = document.createElement('canvas');
+            out.width = W; out.height = H;
+            var octx = out.getContext('2d');
+            octx.fillStyle = '#FFFFFF';
+            octx.fillRect(0, 0, W, H);
+
+            if (theme.type === 'solid' && theme.color === '#000000') {
+                octx.drawImage(srcCanvas, 0, 0);
+                return out;
+            }
+
+            // Build alpha mask: dark QR pixels = opaque black, light = transparent.
+            var mask = document.createElement('canvas');
+            mask.width = W; mask.height = H;
+            var mctx = mask.getContext('2d');
+            mctx.drawImage(srcCanvas, 0, 0);
+            try {
+                var mImg = mctx.getImageData(0, 0, W, H);
+                var md = mImg.data;
+                for (var j = 0; j < md.length; j += 4) {
+                    if (md[j] >= 128) { md[j+3] = 0; }
+                    else { md[j]=0; md[j+1]=0; md[j+2]=0; md[j+3]=255; }
+                }
+                mctx.putImageData(mImg, 0, 0);
+            } catch (e) {
+                // Tainted canvas — fall back to plain QR
+                octx.drawImage(srcCanvas, 0, 0);
+                return out;
+            }
+
+            // Paint fill (solid color or gradient) and mask it with the QR shape.
+            var paint = document.createElement('canvas');
+            paint.width = W; paint.height = H;
+            var pctx = paint.getContext('2d');
+            if (theme.type === 'gradient') {
+                var grad = pctx.createLinearGradient(0, H, W, 0); // bottom-left → top-right
+                theme.stops.forEach(function(s){ grad.addColorStop(s[0], s[1]); });
+                pctx.fillStyle = grad;
+            } else {
+                pctx.fillStyle = theme.color;
+            }
+            pctx.fillRect(0, 0, W, H);
+            pctx.globalCompositeOperation = 'destination-in';
+            pctx.drawImage(mask, 0, 0);
+
+            octx.drawImage(paint, 0, 0);
+            return out;
+        }
+
         function renderWithApi() {
             qrApiUrl = buildApiUrl(currentUrl);
             qrCanvasDiv.innerHTML = '';
-            var img = document.createElement('img');
-            img.className = 'qr-img';
-            img.alt = 'QR Code';
+            var img = new Image();
             img.crossOrigin = 'anonymous';   // allow canvas readout
-            img.src = qrApiUrl;
             img.onload = function(){
-                // Cache as data URL for download/print
                 try {
                     var c = document.createElement('canvas');
                     c.width = img.naturalWidth || 320;
                     c.height = img.naturalHeight || 320;
                     c.getContext('2d').drawImage(img, 0, 0);
-                    lastQrDataUrl = c.toDataURL('image/png');
+                    var themed = applyTheme(c);
+                    qrCanvasDiv.innerHTML = '';
+                    qrCanvasDiv.appendChild(themed);
+                    try { lastQrDataUrl = themed.toDataURL('image/png'); } catch(e){ lastQrDataUrl = ''; }
                 } catch(e) {
-                    // CORS may block readout — keep API URL for fallback
+                    // CORS may block readout — just show the raw image
+                    var fallback = document.createElement('img');
+                    fallback.className = 'qr-img';
+                    fallback.alt = 'QR Code';
+                    fallback.src = qrApiUrl;
+                    qrCanvasDiv.innerHTML = '';
+                    qrCanvasDiv.appendChild(fallback);
                     lastQrDataUrl = '';
                 }
             };
             img.onerror = function(){
                 qrCanvasDiv.innerHTML = '<div class="qr-loading">Could not load QR code. Check your internet connection.</div>';
             };
-            qrCanvasDiv.appendChild(img);
+            img.src = qrApiUrl;
         }
 
         function render() {
@@ -226,11 +311,18 @@
                     colorLight: '#FFFFFF',
                     correctLevel : QRCode.CorrectLevel.H
                 });
-                // Grab the canvas for download/print
+                // Grab the canvas for download/print, apply theme, and replace display
                 setTimeout(function(){
                     var canvas = qrCanvasDiv.querySelector('canvas');
                     if (canvas) {
-                        try { lastQrDataUrl = canvas.toDataURL('image/png'); } catch(e){}
+                        try {
+                            var themed = applyTheme(canvas);
+                            qrCanvasDiv.innerHTML = '';
+                            qrCanvasDiv.appendChild(themed);
+                            lastQrDataUrl = themed.toDataURL('image/png');
+                        } catch(e) {
+                            try { lastQrDataUrl = canvas.toDataURL('image/png'); } catch(e2){}
+                        }
                     } else {
                         var imgEl = qrCanvasDiv.querySelector('img');
                         if (imgEl && imgEl.src) lastQrDataUrl = imgEl.src;
