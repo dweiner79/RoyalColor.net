@@ -58,6 +58,7 @@
                     <option value="https://www.royalcolor.net/about.html" data-tag="utm">About (about.html)</option>
                     <option value="https://www.royalcolor.net/quiz.html" data-tag="utm">Color Quiz (quiz.html)</option>
                     <option value="https://www.royalcolor.net/faq.html" data-tag="utm">FAQ (faq.html)</option>
+                    <option value="https://www.instagram.com/royalcoloranalysis" data-tag="none">Instagram (@royalcoloranalysis)</option>
                     <option value="__custom__" data-tag="utm">Custom URL…</option>
                 </select>
             </div>
@@ -150,10 +151,14 @@
             var trimmed = (eventName || '').trim();
             if (!trimmed) return base;
 
+            var mode = getActiveTagMode();
+            // 'none' = link straight to destination, no params (e.g. Instagram)
+            if (mode === 'none') return base;
+
             // For the intake form, use ?event= so the form pre-fills the source.
             // For all other pages, use UTM params so it shows up in your analytics.
             var sep = base.indexOf('?') === -1 ? '?' : '&';
-            if (getActiveTagMode() === 'event') {
+            if (mode === 'event') {
                 return base + sep + 'event=' + encodeURIComponent(trimmed);
             }
             return base + sep + 'utm_source=qr&utm_medium=print&utm_campaign=' + encodeURIComponent(trimmed);
@@ -244,9 +249,12 @@
             // Update the event/tag label hint based on selected destination
             var tagLabel = document.querySelector('label[for="eventName"]');
             if (tagLabel) {
-                var hint = getActiveTagMode() === 'event'
+                var mode = getActiveTagMode();
+                var hint = mode === 'event'
                     ? '(optional — pre-fills the intake form, e.g. F1 Watch Party)'
-                    : '(optional — adds UTM tag for tracking, e.g. spring-market)';
+                    : mode === 'none'
+                        ? '(not used for this destination)'
+                        : '(optional — adds UTM tag for tracking, e.g. spring-market)';
                 tagLabel.innerHTML = 'Event / Tag <span style="font-weight:400;color:var(--color-text-muted);font-size:.85rem;">' + hint + '</span>';
             }
             render();
