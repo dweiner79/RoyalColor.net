@@ -21,7 +21,8 @@
         .form-row input:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
         .url-display{background:var(--color-cream);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:.75rem 1rem;font-family:monospace;font-size:.82rem;word-break:break-all;color:var(--color-text);margin-bottom:1rem;user-select:all}
         .qr-output{text-align:center;padding:1.5rem 0;border-top:1px solid var(--color-border);margin-top:1.25rem}
-        .qr-output canvas{max-width:100%;height:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);background:#fff;padding:.75rem}
+        .qr-output canvas,.qr-output img.qr-img{max-width:100%;height:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);background:#fff;padding:.75rem;width:320px;height:320px}
+        .qr-loading{padding:6rem 1rem;color:var(--color-text-muted);font-size:.9rem}
         .logo-preview{margin-top:1rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
         .logo-preview img{max-width:180px;max-height:120px;height:auto;display:block}
         .logo-preview .logo-label{font-size:.78rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em}
@@ -84,12 +85,13 @@
         </div>
     </div>
 
-    <!-- QR code library (works offline once loaded) -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- QR code library — loaded from a reliable CDN; we have an image-API fallback if it fails. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
     (function(){
         var BASE_URL    = 'https://www.royalcolor.net/intake.html';
         var DEFAULT_LOGO = 'LOGO.png';
+        var QR_COLOR    = '8B2252';   // hex without # for the API fallback
         var input       = document.getElementById('eventName');
         var urlDisplay  = document.getElementById('urlDisplay');
         var qrCanvasDiv = document.getElementById('qrCanvas');
@@ -104,8 +106,9 @@
         var resetLogoBtn= document.getElementById('resetLogo');
 
         var currentUrl  = BASE_URL;
-        // currentLogoSrc: '' = none, otherwise URL or data URL used in print
         var currentLogoSrc = DEFAULT_LOGO;
+        var lastQrDataUrl = '';   // cached PNG data URL for download/print
+        var qrApiUrl = '';        // image API URL when in fallback mode
 
         function buildUrl(eventName) {
             var trimmed = (eventName || '').trim();
@@ -113,36 +116,119 @@
             return BASE_URL + '?event=' + encodeURIComponent(trimmed);
         }
 
+        function buildApiUrl(data) {
+            return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320'
+                + '&data=' + encodeURIComponent(data)
+                + '&color=' + QR_COLOR
+                + '&bgcolor=FFFFFF&margin=10&qzone=2&format=png';
+        }
+
+        function renderWithApi() {
+            qrApiUrl = buildApiUrl(currentUrl);
+            qrCanvasDiv.innerHTML = '';
+            var img = document.createElement('img');
+            img.className = 'qr-img';
+            img.alt = 'QR Code';
+            img.crossOrigin = 'anonymous';   // allow canvas readout
+            img.src = qrApiUrl;
+            img.onload = function(){
+                // Cache as data URL for download/print
+                try {
+                    var c = document.createElement('canvas');
+                    c.width = img.naturalWidth || 320;
+                    c.height = img.naturalHeight || 320;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    lastQrDataUrl = c.toDataURL('image/png');
+                } catch(e) {
+                    // CORS may block readout — keep API URL for fallback
+                    lastQrDataUrl = '';
+                }
+            };
+            img.onerror = function(){
+                qrCanvasDiv.innerHTML = '<div class="qr-loading">Could not load QR code. Check your internet connection.</div>';
+            };
+            qrCanvasDiv.appendChild(img);
+        }
+
         function render() {
             currentUrl = buildUrl(input.value);
             urlDisplay.textContent = currentUrl;
+            lastQrDataUrl = '';
+            qrApiUrl = '';
 
-            // Clear previous canvas
-            qrCanvasDiv.innerHTML = '';
-            var canvas = document.createElement('canvas');
-            qrCanvasDiv.appendChild(canvas);
+            // Try the local library first (qrcodejs). If unavailable → use API.
+            if (typeof QRCode === 'undefined' || !QRCode) {
+                renderWithApi();
+                return;
+            }
 
-            QRCode.toCanvas(canvas, currentUrl, {
-                width: 320,
-                margin: 2,
-                color: { dark: '#8B2252', light: '#FFFFFF' },
-                errorCorrectionLevel: 'M'
-            }, function(err){
-                if (err) console.error(err);
-            });
+            try {
+                qrCanvasDiv.innerHTML = '';
+                // qrcodejs renders into a target div as <canvas> + <img>
+                new QRCode(qrCanvasDiv, {
+                    text: currentUrl,
+                    width: 320,
+                    height: 320,
+                    colorDark : '#8B2252',
+                    colorLight: '#FFFFFF',
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+                // Grab the canvas for download/print
+                setTimeout(function(){
+                    var canvas = qrCanvasDiv.querySelector('canvas');
+                    if (canvas) {
+                        try { lastQrDataUrl = canvas.toDataURL('image/png'); } catch(e){}
+                    } else {
+                        var imgEl = qrCanvasDiv.querySelector('img');
+                        if (imgEl && imgEl.src) lastQrDataUrl = imgEl.src;
+                    }
+                }, 50);
+            } catch (err) {
+                console.error('QR library failed, using API:', err);
+                renderWithApi();
+            }
         }
 
         input.addEventListener('input', render);
 
-        downloadBtn.addEventListener('click', function(){
+        function getQrPngForOutput(callback) {
+            // Returns a usable PNG src (data URL preferred, API URL fallback)
+            if (lastQrDataUrl) return callback(lastQrDataUrl);
+            if (qrApiUrl) {
+                // Re-fetch with crossOrigin to convert to data URL
+                var img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function(){
+                    try {
+                        var c = document.createElement('canvas');
+                        c.width = img.naturalWidth || 320;
+                        c.height = img.naturalHeight || 320;
+                        c.getContext('2d').drawImage(img, 0, 0);
+                        callback(c.toDataURL('image/png'));
+                    } catch(e) { callback(qrApiUrl); }
+                };
+                img.onerror = function(){ callback(qrApiUrl); };
+                img.src = qrApiUrl;
+                return;
+            }
+            // Last resort: try canvas in DOM
             var canvas = qrCanvasDiv.querySelector('canvas');
-            if (!canvas) return;
-            var name = (input.value.trim() || 'royalcolor-intake')
-                .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
-            var link = document.createElement('a');
-            link.download = 'qr-' + name + '.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            if (canvas) { try { return callback(canvas.toDataURL('image/png')); } catch(e){} }
+            callback('');
+        }
+
+        downloadBtn.addEventListener('click', function(){
+            getQrPngForOutput(function(src){
+                if (!src) { alert('QR code is still loading — please try again in a moment.'); return; }
+                var name = (input.value.trim() || 'royalcolor-intake')
+                    .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+                var link = document.createElement('a');
+                link.download = 'qr-' + name + '.png';
+                link.href = src;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
         });
 
         copyBtn.addEventListener('click', function(){
@@ -170,40 +256,39 @@
         }
 
         printBtn.addEventListener('click', function(){
-            var canvas = qrCanvasDiv.querySelector('canvas');
-            if (!canvas) return;
-            var dataUrl = canvas.toDataURL('image/png');
-            var eventLabel = input.value.trim() || 'Royal Color Analysis & Styling';
-            var safeLabel = eventLabel.replace(/[<>&"]/g, '');
-            var logoHtml = '';
-            if (currentLogoSrc) {
-                // Use absolute URL for default logo so the popup window can find it
-                var src = currentLogoSrc;
-                if (src === DEFAULT_LOGO) {
-                    src = window.location.origin + '/' + DEFAULT_LOGO;
+            getQrPngForOutput(function(src){
+                if (!src) { alert('QR code is still loading — please try again in a moment.'); return; }
+                var eventLabel = input.value.trim() || 'Royal Color Analysis & Styling';
+                var safeLabel = eventLabel.replace(/[<>&"]/g, '');
+                var logoHtml = '';
+                if (currentLogoSrc) {
+                    var logoSrc = currentLogoSrc;
+                    if (logoSrc === DEFAULT_LOGO) {
+                        logoSrc = window.location.origin + '/' + DEFAULT_LOGO;
+                    }
+                    logoHtml = '<img class="logo" src="' + logoSrc + '" alt="Logo">';
                 }
-                logoHtml = '<img class="logo" src="' + src + '" alt="Logo">';
-            }
-            var w = window.open('', '_blank');
-            w.document.write(
-                '<!doctype html><html><head><title>Print QR — ' + safeLabel + '</title>' +
-                '<style>body{font-family:Georgia,serif;text-align:center;padding:2rem;color:#222}' +
-                'h1{font-size:1.6rem;margin-bottom:.25rem;color:#8B2252}' +
-                'p{color:#666;margin-top:0;font-size:1rem}' +
-                'img.qr{width:380px;height:380px;margin:1.5rem auto .5rem;display:block}' +
-                'img.logo{max-width:240px;max-height:140px;height:auto;width:auto;margin:1rem auto;display:block}' +
-                '.label{font-size:1.4rem;font-weight:bold;margin-top:.5rem}' +
-                '@media print{body{padding:0}}</style></head><body>' +
-                '<h1>Royal Color Analysis &amp; Styling</h1>' +
-                '<p>Scan to stay in touch — color tips, event invites &amp; offers</p>' +
-                '<img class="qr" src="' + dataUrl + '" alt="QR Code">' +
-                '<div class="label">' + safeLabel + '</div>' +
-                logoHtml +
-                '<p style="font-size:.85rem;color:#888;margin-top:1.5rem;">royalcolor.net</p>' +
-                '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>' +
-                '</body></html>'
-            );
-            w.document.close();
+                var w = window.open('', '_blank');
+                w.document.write(
+                    '<!doctype html><html><head><title>Print QR — ' + safeLabel + '</title>' +
+                    '<style>body{font-family:Georgia,serif;text-align:center;padding:2rem;color:#222}' +
+                    'h1{font-size:1.6rem;margin-bottom:.25rem;color:#8B2252}' +
+                    'p{color:#666;margin-top:0;font-size:1rem}' +
+                    'img.qr{width:380px;height:380px;margin:1.5rem auto .5rem;display:block}' +
+                    'img.logo{max-width:240px;max-height:140px;height:auto;width:auto;margin:1rem auto;display:block}' +
+                    '.label{font-size:1.4rem;font-weight:bold;margin-top:.5rem}' +
+                    '@media print{body{padding:0}}</style></head><body>' +
+                    '<h1>Royal Color Analysis &amp; Styling</h1>' +
+                    '<p>Scan to stay in touch — color tips, event invites &amp; offers</p>' +
+                    '<img class="qr" src="' + src + '" alt="QR Code">' +
+                    '<div class="label">' + safeLabel + '</div>' +
+                    logoHtml +
+                    '<p style="font-size:.85rem;color:#888;margin-top:1.5rem;">royalcolor.net</p>' +
+                    '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>' +
+                    '</body></html>'
+                );
+                w.document.close();
+            });
         });
 
         // ---- Logo handlers ----
