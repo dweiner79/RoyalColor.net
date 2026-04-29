@@ -17,8 +17,9 @@
         .qr-card .lede{text-align:center;color:var(--color-text-muted);margin-bottom:1.5rem;font-size:.95rem}
         .form-row{margin-bottom:1.1rem}
         .form-row label{display:block;font-weight:600;margin-bottom:.35rem;font-size:.92rem}
-        .form-row input{width:100%;padding:.85rem 1rem;border:2px solid var(--color-border);border-radius:var(--radius-md);font:inherit;font-size:1rem;background:#fff;transition:var(--transition);-webkit-appearance:none;appearance:none}
-        .form-row input:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
+        .form-row input,.form-row select{width:100%;padding:.85rem 1rem;border:2px solid var(--color-border);border-radius:var(--radius-md);font:inherit;font-size:1rem;background:#fff;transition:var(--transition);-webkit-appearance:none;appearance:none}
+        .form-row select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%238B2252' d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;cursor:pointer}
+        .form-row input:focus,.form-row select:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
         .url-display{background:var(--color-cream);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:.75rem 1rem;font-family:monospace;font-size:.82rem;word-break:break-all;color:var(--color-text);margin-bottom:1rem;user-select:all}
         .qr-output{text-align:center;padding:1.5rem 0;border-top:1px solid var(--color-border);margin-top:1.25rem}
         .qr-output canvas,.qr-output img.qr-img{max-width:100%;height:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);background:#fff;padding:.75rem;width:320px;height:320px}
@@ -45,10 +46,29 @@
     <div class="qr-wrap">
         <div class="qr-card">
             <h1>Event QR Code Generator</h1>
-            <p class="lede">Type an event name. Get a QR code instantly. Print it. Scan it. Capture leads.</p>
+            <p class="lede">Pick a destination, optionally tag it with an event name. Get a QR code instantly.</p>
 
             <div class="form-row">
-                <label for="eventName">Event Name <span style="font-weight:400;color:var(--color-text-muted);font-size:.85rem;">(e.g. F1 Watch Party, Boca Spring Market)</span></label>
+                <label for="destination">Destination</label>
+                <select id="destination">
+                    <option value="https://www.royalcolor.net/intake.html" data-tag="event" selected>Customer Intake Form (intake.html)</option>
+                    <option value="https://www.royalcolor.net/" data-tag="utm">Home Page (royalcolor.net)</option>
+                    <option value="https://www.royalcolor.net/booking.html" data-tag="utm">Book Now (booking.html)</option>
+                    <option value="https://www.royalcolor.net/services.html" data-tag="utm">Services (services.html)</option>
+                    <option value="https://www.royalcolor.net/about.html" data-tag="utm">About (about.html)</option>
+                    <option value="https://www.royalcolor.net/quiz.html" data-tag="utm">Color Quiz (quiz.html)</option>
+                    <option value="https://www.royalcolor.net/faq.html" data-tag="utm">FAQ (faq.html)</option>
+                    <option value="__custom__" data-tag="utm">Custom URL…</option>
+                </select>
+            </div>
+
+            <div class="form-row" id="customUrlRow" style="display:none;">
+                <label for="customUrl">Custom URL</label>
+                <input type="url" id="customUrl" placeholder="https://www.royalcolor.net/some-page" autocomplete="off">
+            </div>
+
+            <div class="form-row">
+                <label for="eventName">Event / Tag <span style="font-weight:400;color:var(--color-text-muted);font-size:.85rem;">(optional — e.g. F1 Watch Party, Boca Spring Market)</span></label>
                 <input type="text" id="eventName" placeholder="F1 Watch Party" autocomplete="off">
             </div>
 
@@ -93,6 +113,9 @@
         var DEFAULT_LOGO = 'LOGO.png';
         var QR_COLOR    = '8B2252';   // hex without # for the API fallback
         var input       = document.getElementById('eventName');
+        var destSelect  = document.getElementById('destination');
+        var customUrlRow= document.getElementById('customUrlRow');
+        var customUrl   = document.getElementById('customUrl');
         var urlDisplay  = document.getElementById('urlDisplay');
         var qrCanvasDiv = document.getElementById('qrCanvas');
         var downloadBtn = document.getElementById('downloadBtn');
@@ -107,13 +130,33 @@
 
         var currentUrl  = BASE_URL;
         var currentLogoSrc = DEFAULT_LOGO;
-        var lastQrDataUrl = '';   // cached PNG data URL for download/print
-        var qrApiUrl = '';        // image API URL when in fallback mode
+        var lastQrDataUrl = '';
+        var qrApiUrl = '';
+
+        function getActiveBase() {
+            var v = destSelect.value;
+            if (v === '__custom__') return (customUrl.value || '').trim();
+            return v;
+        }
+
+        function getActiveTagMode() {
+            var opt = destSelect.options[destSelect.selectedIndex];
+            return opt ? (opt.getAttribute('data-tag') || 'utm') : 'utm';
+        }
 
         function buildUrl(eventName) {
+            var base = getActiveBase();
+            if (!base) return '';
             var trimmed = (eventName || '').trim();
-            if (!trimmed) return BASE_URL;
-            return BASE_URL + '?event=' + encodeURIComponent(trimmed);
+            if (!trimmed) return base;
+
+            // For the intake form, use ?event= so the form pre-fills the source.
+            // For all other pages, use UTM params so it shows up in your analytics.
+            var sep = base.indexOf('?') === -1 ? '?' : '&';
+            if (getActiveTagMode() === 'event') {
+                return base + sep + 'event=' + encodeURIComponent(trimmed);
+            }
+            return base + sep + 'utm_source=qr&utm_medium=print&utm_campaign=' + encodeURIComponent(trimmed);
         }
 
         function buildApiUrl(data) {
@@ -152,9 +195,14 @@
 
         function render() {
             currentUrl = buildUrl(input.value);
-            urlDisplay.textContent = currentUrl;
+            urlDisplay.textContent = currentUrl || '— enter a custom URL —';
             lastQrDataUrl = '';
             qrApiUrl = '';
+
+            if (!currentUrl) {
+                qrCanvasDiv.innerHTML = '<div class="qr-loading">Enter a custom URL to generate a QR code.</div>';
+                return;
+            }
 
             // Try the local library first (qrcodejs). If unavailable → use API.
             if (typeof QRCode === 'undefined' || !QRCode) {
@@ -190,6 +238,20 @@
         }
 
         input.addEventListener('input', render);
+
+        destSelect.addEventListener('change', function(){
+            customUrlRow.style.display = (destSelect.value === '__custom__') ? '' : 'none';
+            // Update the event/tag label hint based on selected destination
+            var tagLabel = document.querySelector('label[for="eventName"]');
+            if (tagLabel) {
+                var hint = getActiveTagMode() === 'event'
+                    ? '(optional — pre-fills the intake form, e.g. F1 Watch Party)'
+                    : '(optional — adds UTM tag for tracking, e.g. spring-market)';
+                tagLabel.innerHTML = 'Event / Tag <span style="font-weight:400;color:var(--color-text-muted);font-size:.85rem;">' + hint + '</span>';
+            }
+            render();
+        });
+        customUrl.addEventListener('input', render);
 
         function getQrPngForOutput(callback) {
             // Returns a usable PNG src (data URL preferred, API URL fallback)
