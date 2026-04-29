@@ -40,6 +40,23 @@
         .src-badge { display: inline-block; background: rgba(107,53,168,.1); color: var(--color-primary); padding: .15rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
         .consent-yes { color: #1f6b3a; font-weight: 600; }
         .consent-no { color: #a3271a; font-weight: 600; }
+        .btn-danger { background: #fff; color: #a3271a; border: 1px solid #e6c7c2; padding: .35rem .6rem; font-size: .8rem; border-radius: var(--radius-sm); cursor: pointer; }
+        .btn-danger:hover { background: #a3271a; color: #fff; border-color: #a3271a; }
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+        .modal-backdrop.show { display: flex; }
+        .modal { background: #fff; border-radius: var(--radius-md); padding: 1.75rem; max-width: 480px; width: 100%; box-shadow: var(--shadow-md); max-height: 90vh; overflow-y: auto; }
+        .modal h2 { font-family: var(--font-heading); color: var(--color-primary); margin: 0 0 1.25rem; }
+        .modal .form-row { margin-bottom: 1rem; }
+        .modal label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: var(--color-text-muted); }
+        .modal input, .modal textarea, .modal select { width: 100%; padding: .6rem .8rem; border: 2px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; font-size: .95rem; box-sizing: border-box; background: #fff; }
+        .modal input:focus, .modal textarea:focus, .modal select:focus { outline: none; border-color: var(--color-primary); }
+        .modal textarea { resize: vertical; min-height: 80px; }
+        .modal-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1.25rem; }
+        .modal .checkbox-row { display: flex; align-items: center; gap: .5rem; }
+        .modal .checkbox-row input { width: auto; }
+        .modal .checkbox-row label { margin: 0; }
+        .modal-error { color: #c0392b; font-size: .85rem; margin-top: .5rem; display: none; }
         /* Auth */
         .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
         .auth-box { background: #fff; border-radius: var(--radius-md); padding: 2.5rem; box-shadow: var(--shadow-md); max-width: 380px; width: 100%; }
@@ -82,6 +99,7 @@
                 <div class="leads-meta" id="leadsMeta">Loading…</div>
             </div>
             <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                <button type="button" class="btn-sm btn-purple" onclick="openAddModal()">+ Add Lead</button>
                 <button type="button" class="btn-sm btn-outline" onclick="loadLeads()">Refresh</button>
                 <button type="button" class="btn-sm btn-outline" onclick="exportCsv()">Export CSV</button>
                 <button type="button" class="btn-sm btn-outline" onclick="handleLogout()">Sign Out</button>
@@ -90,6 +108,9 @@
 
         <div class="leads-controls">
             <input type="search" id="searchInput" placeholder="Search name, phone, email, event, notes…" oninput="renderTable()">
+            <select id="eventFilter" onchange="renderTable()" style="padding:.65rem .85rem;border:2px solid var(--color-border);border-radius:var(--radius-md);font:inherit;font-size:.9rem;background:#fff;">
+                <option value="">All events</option>
+            </select>
             <select id="consentFilter" onchange="renderTable()" style="padding:.65rem .85rem;border:2px solid var(--color-border);border-radius:var(--radius-md);font:inherit;font-size:.9rem;background:#fff;">
                 <option value="">All consent</option>
                 <option value="Yes">Consented</option>
@@ -100,6 +121,45 @@
         <div id="tableContainer">
             <div class="loading">Loading leads…</div>
         </div>
+    </div>
+</div>
+
+<!-- ═══════ ADD LEAD MODAL ═══════ -->
+<div id="addModal" class="modal-backdrop" onclick="if(event.target===this)closeAddModal()">
+    <div class="modal">
+        <h2>Add Lead</h2>
+        <form id="addLeadForm" onsubmit="return submitAddLead(event)">
+            <div class="form-row">
+                <label for="alName">Name *</label>
+                <input type="text" id="alName" required>
+            </div>
+            <div class="form-row">
+                <label for="alPhone">Phone</label>
+                <input type="tel" id="alPhone">
+            </div>
+            <div class="form-row">
+                <label for="alEmail">Email</label>
+                <input type="email" id="alEmail">
+            </div>
+            <div class="form-row">
+                <label for="alEvent">Event / Source</label>
+                <input type="text" id="alEvent" list="alEventList" placeholder="e.g. F1, Pop-up, Referral">
+                <datalist id="alEventList"></datalist>
+            </div>
+            <div class="form-row">
+                <label for="alNotes">Notes</label>
+                <textarea id="alNotes"></textarea>
+            </div>
+            <div class="form-row checkbox-row">
+                <input type="checkbox" id="alConsent" checked>
+                <label for="alConsent">Consent to contact</label>
+            </div>
+            <p class="modal-error" id="alError"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn-sm btn-outline" onclick="closeAddModal()">Cancel</button>
+                <button type="submit" class="btn-sm btn-purple" id="alSubmit">Save Lead</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -151,6 +211,7 @@ function loadLeads() {
             }
             allLeads = j.leads || [];
             document.getElementById('leadsMeta').textContent = allLeads.length + ' lead' + (allLeads.length === 1 ? '' : 's') + ' • Showing newest first';
+            populateEventFilter();
             renderTable();
         })
         .catch(function(err){
@@ -168,8 +229,16 @@ function escapeHtml(s) {
 function getFiltered() {
     var q = document.getElementById('searchInput').value.trim().toLowerCase();
     var consent = document.getElementById('consentFilter').value;
+    var eventVal = document.getElementById('eventFilter').value;
     var rows = allLeads.slice();
     if (consent) rows = rows.filter(function(r){ return r.consent === consent; });
+    if (eventVal) {
+        if (eventVal === '__none__') {
+            rows = rows.filter(function(r){ return !r.eventSource; });
+        } else {
+            rows = rows.filter(function(r){ return r.eventSource === eventVal; });
+        }
+    }
     if (q) {
         rows = rows.filter(function(r){
             return (r.name + ' ' + r.phone + ' ' + r.email + ' ' + r.eventSource + ' ' + r.notes).toLowerCase().indexOf(q) !== -1;
@@ -202,10 +271,11 @@ function renderTable() {
         + '<th onclick="setSort(\'eventSource\')">Event/Source' + arrow('eventSource') + '</th>'
         + '<th onclick="setSort(\'consent\')">Consent' + arrow('consent') + '</th>'
         + '<th>Notes</th>'
+        + '<th></th>'
         + '</tr></thead><tbody>';
 
     if (rows.length === 0) {
-        html += '<tr><td colspan="7" class="empty">No leads match your filters.</td></tr>';
+        html += '<tr><td colspan="8" class="empty">No leads match your filters.</td></tr>';
     } else {
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i];
@@ -221,11 +291,119 @@ function renderTable() {
                 + '<td>' + srcCell + '</td>'
                 + '<td class="' + conCls + '">' + escapeHtml(r.consent) + '</td>'
                 + '<td class="notes">' + escapeHtml(r.notes) + '</td>'
+                + '<td><button type="button" class="btn-danger" onclick="deleteLead(\'' + escapeAttr(r.id) + '\', \'' + escapeAttr(r.name) + '\')">Delete</button></td>'
                 + '</tr>';
         }
     }
     html += '</tbody></table></div>';
     document.getElementById('tableContainer').innerHTML = html;
+}
+
+function escapeAttr(s) {
+    return (s == null ? '' : String(s)).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+/* Build the Event filter from unique eventSource values */
+function populateEventFilter() {
+    var sel = document.getElementById('eventFilter');
+    var current = sel.value;
+    var counts = {};
+    var hasBlank = false;
+    for (var i = 0; i < allLeads.length; i++) {
+        var v = (allLeads[i].eventSource || '').trim();
+        if (!v) { hasBlank = true; continue; }
+        counts[v] = (counts[v] || 0) + 1;
+    }
+    var keys = Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); });
+    var html = '<option value="">All events (' + allLeads.length + ')</option>';
+    keys.forEach(function(k){
+        html += '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + ' (' + counts[k] + ')</option>';
+    });
+    if (hasBlank) html += '<option value="__none__">(no event) </option>';
+    sel.innerHTML = html;
+    if (current && (current === '__none__' || counts[current])) sel.value = current;
+
+    // Also populate the datalist used by the Add Lead form
+    var dl = document.getElementById('alEventList');
+    if (dl) {
+        dl.innerHTML = keys.map(function(k){ return '<option value="' + escapeHtml(k) + '">'; }).join('');
+    }
+}
+
+/* ── Add Lead modal ── */
+function openAddModal() {
+    document.getElementById('addLeadForm').reset();
+    document.getElementById('alConsent').checked = true;
+    document.getElementById('alError').style.display = 'none';
+    document.getElementById('addModal').classList.add('show');
+    setTimeout(function(){ document.getElementById('alName').focus(); }, 50);
+}
+function closeAddModal() {
+    document.getElementById('addModal').classList.remove('show');
+}
+function submitAddLead(e) {
+    e.preventDefault();
+    var btn = document.getElementById('alSubmit');
+    var err = document.getElementById('alError');
+    err.style.display = 'none';
+    var payload = {
+        type:        'addLead',
+        name:        document.getElementById('alName').value.trim(),
+        phone:       document.getElementById('alPhone').value.trim(),
+        email:       document.getElementById('alEmail').value.trim(),
+        eventSource: document.getElementById('alEvent').value.trim(),
+        notes:       document.getElementById('alNotes').value.trim(),
+        consent:     document.getElementById('alConsent').checked
+    };
+    if (!payload.name) { err.textContent = 'Name is required.'; err.style.display = 'block'; return false; }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+        btn.disabled = false; btn.textContent = 'Save Lead';
+        if (j && j.ok) {
+            closeAddModal();
+            loadLeads();
+        } else {
+            err.textContent = (j && j.error) || 'Could not save lead.';
+            err.style.display = 'block';
+        }
+    })
+    .catch(function(ex){
+        btn.disabled = false; btn.textContent = 'Save Lead';
+        err.textContent = ex.message || 'Network error.';
+        err.style.display = 'block';
+    });
+    return false;
+}
+
+/* ── Delete ── */
+function deleteLead(id, name) {
+    if (!id) return;
+    if (!confirm('Delete lead for ' + (name || 'this person') + '? This cannot be undone.')) return;
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'deleteLead', id: id })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+        if (j && j.ok) {
+            allLeads = allLeads.filter(function(r){ return r.id !== id; });
+            populateEventFilter();
+            renderTable();
+            document.getElementById('leadsMeta').textContent = allLeads.length + ' lead' + (allLeads.length === 1 ? '' : 's') + ' • Showing newest first';
+        } else {
+            alert('Delete failed: ' + ((j && j.error) || 'unknown error'));
+        }
+    })
+    .catch(function(ex){
+        alert('Delete failed: ' + (ex.message || 'network error'));
+    });
 }
 
 /* ── CSV export ── */

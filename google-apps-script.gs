@@ -122,6 +122,12 @@ function doPost(e) {
     } else if (data.type === 'intake') {
       // Customer intake form (event QR-code lead capture)
       result = logIntake(data);
+    } else if (data.type === 'addLead') {
+      // Admin manually adds a lead
+      result = addLead(data);
+    } else if (data.type === 'deleteLead') {
+      // Admin deletes a lead by timestamp
+      result = deleteLead(data);
     } else {
       // Booking request
       result = createBooking(data);
@@ -921,7 +927,9 @@ function getLeads(limit) {
       var tsStr = ts instanceof Date
         ? Utilities.formatDate(ts, tz, 'yyyy-MM-dd HH:mm')
         : (ts || '').toString();
+      var tsIso = ts instanceof Date ? ts.toISOString() : (ts || '').toString();
       leads.push({
+        id:          tsIso,
         timestamp:   tsStr,
         name:        (r[1] || '').toString(),
         phone:       (r[2] || '').toString(),
@@ -937,5 +945,71 @@ function getLeads(limit) {
     return { leads: leads, total: lastRow - 1 };
   } catch (err) {
     return { error: err.message };
+  }
+}
+
+/**
+ * Manually add a lead from the admin Leads page.
+ * Same fields as logIntake but does not send the customer notification email.
+ */
+function addLead(data) {
+  try {
+    var name  = (data.name  || '').toString().trim();
+    var phone = (data.phone || '').toString().trim();
+    var email = (data.email || '').toString().trim();
+
+    if (!name) return { ok: false, error: 'Name is required.' };
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, error: 'Please enter a valid email address.' };
+    }
+
+    var sheet = getOrCreateLeadsSheet();
+    var ts = new Date();
+
+    sheet.appendRow([
+      ts,
+      name,
+      phone,
+      email,
+      (data.eventSource || '').toString(),
+      (data.notes       || '').toString(),
+      data.consent ? 'Yes' : 'No',
+      'admin',
+      'admin-entry'
+    ]);
+
+    return { ok: true, id: ts.toISOString() };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Delete a lead by its timestamp id (ISO string from getLeads).
+ */
+function deleteLead(data) {
+  try {
+    var id = (data.id || '').toString();
+    if (!id) return { ok: false, error: 'Missing lead id.' };
+
+    var targetMs = new Date(id).getTime();
+    if (isNaN(targetMs)) return { ok: false, error: 'Invalid lead id.' };
+
+    var sheet = getOrCreateLeadsSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { ok: false, error: 'No leads to delete.' };
+
+    var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < values.length; i++) {
+      var ts = values[i][0];
+      var rowMs = ts instanceof Date ? ts.getTime() : new Date((ts || '').toString()).getTime();
+      if (!isNaN(rowMs) && rowMs === targetMs) {
+        sheet.deleteRow(i + 2);
+        return { ok: true };
+      }
+    }
+    return { ok: false, error: 'Lead not found.' };
+  } catch (err) {
+    return { ok: false, error: err.message };
   }
 }
