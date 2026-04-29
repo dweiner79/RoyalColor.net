@@ -82,7 +82,7 @@
                 <div id="qrCanvas"></div>
 
                 <div class="logo-preview" id="logoPreview">
-                    <span class="logo-label">Logo (printed below QR)</span>
+                    <span class="logo-label">Logo (overlaid on QR center)</span>
                     <img id="logoImg" src="LOGO.png" alt="Logo" onerror="this.style.display='none'">
                 </div>
                 <div class="logo-controls">
@@ -168,7 +168,7 @@
             return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320'
                 + '&data=' + encodeURIComponent(data)
                 + '&color=' + QR_COLOR
-                + '&bgcolor=FFFFFF&margin=10&qzone=2&format=png';
+                + '&bgcolor=FFFFFF&margin=10&qzone=2&ecc=H&format=png';
         }
 
         function renderWithApi() {
@@ -224,7 +224,7 @@
                     height: 320,
                     colorDark : '#000000',
                     colorLight: '#FFFFFF',
-                    correctLevel : QRCode.CorrectLevel.M
+                    correctLevel : QRCode.CorrectLevel.H
                 });
                 // Grab the canvas for download/print
                 setTimeout(function(){
@@ -287,38 +287,62 @@
             callback('');
         }
 
-        // Composite QR + (optional) logo into a single PNG and return its data URL.
+        // Composite QR with logo overlaid in the center and return its data URL.
+        // QR uses error-correction level H, so up to ~30% of the code can be obscured
+        // by a center logo and the code will still scan reliably.
         function buildCompositePng(qrSrc, callback) {
             var qr = new Image();
             qr.crossOrigin = 'anonymous';
             qr.onload = function(){
                 var QR_SIZE = qr.naturalWidth || 320;
-                var PAD = 32;
-                var LOGO_MAX_W = Math.round(QR_SIZE * 0.75);
-                var LOGO_MAX_H = Math.round(QR_SIZE * 0.45);
+                // Keep logo box <= ~22% of QR area (logo itself ~18%) — well within H ECC budget.
+                var BOX_SIZE = Math.round(QR_SIZE * 0.22);
+                var LOGO_MAX = Math.round(QR_SIZE * 0.18);
 
                 function drawAndExport(logoImgEl) {
-                    var logoW = 0, logoH = 0;
-                    if (logoImgEl) {
-                        var lw = logoImgEl.naturalWidth, lh = logoImgEl.naturalHeight;
-                        if (lw && lh) {
-                            var scale = Math.min(LOGO_MAX_W / lw, LOGO_MAX_H / lh, 1);
-                            logoW = Math.round(lw * scale);
-                            logoH = Math.round(lh * scale);
-                        }
-                    }
-                    var totalH = QR_SIZE + (logoH ? PAD + logoH : 0);
                     var c = document.createElement('canvas');
                     c.width = QR_SIZE;
-                    c.height = totalH;
+                    c.height = QR_SIZE;
                     var ctx = c.getContext('2d');
                     ctx.fillStyle = '#FFFFFF';
                     ctx.fillRect(0, 0, c.width, c.height);
                     ctx.drawImage(qr, 0, 0, QR_SIZE, QR_SIZE);
-                    if (logoImgEl && logoW && logoH) {
-                        var x = Math.round((QR_SIZE - logoW) / 2);
-                        var y = QR_SIZE + PAD;
-                        ctx.drawImage(logoImgEl, x, y, logoW, logoH);
+
+                    if (logoImgEl) {
+                        var lw = logoImgEl.naturalWidth, lh = logoImgEl.naturalHeight;
+                        if (lw && lh) {
+                            var scale = Math.min(LOGO_MAX / lw, LOGO_MAX / lh, 1);
+                            var logoW = Math.round(lw * scale);
+                            var logoH = Math.round(lh * scale);
+                            var cx = QR_SIZE / 2;
+                            var cy = QR_SIZE / 2;
+
+                            // White rounded square behind the logo so the QR modules under it are masked cleanly.
+                            var bx = Math.round(cx - BOX_SIZE / 2);
+                            var by = Math.round(cy - BOX_SIZE / 2);
+                            var r = Math.round(BOX_SIZE * 0.12);
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.beginPath();
+                            ctx.moveTo(bx + r, by);
+                            ctx.lineTo(bx + BOX_SIZE - r, by);
+                            ctx.quadraticCurveTo(bx + BOX_SIZE, by, bx + BOX_SIZE, by + r);
+                            ctx.lineTo(bx + BOX_SIZE, by + BOX_SIZE - r);
+                            ctx.quadraticCurveTo(bx + BOX_SIZE, by + BOX_SIZE, bx + BOX_SIZE - r, by + BOX_SIZE);
+                            ctx.lineTo(bx + r, by + BOX_SIZE);
+                            ctx.quadraticCurveTo(bx, by + BOX_SIZE, bx, by + BOX_SIZE - r);
+                            ctx.lineTo(bx, by + r);
+                            ctx.quadraticCurveTo(bx, by, bx + r, by);
+                            ctx.closePath();
+                            ctx.fill();
+
+                            ctx.drawImage(
+                                logoImgEl,
+                                Math.round(cx - logoW / 2),
+                                Math.round(cy - logoH / 2),
+                                logoW,
+                                logoH
+                            );
+                        }
                     }
                     try { callback(c.toDataURL('image/png')); }
                     catch (e) { callback(qrSrc); }   // CORS taint — fall back to QR-only
@@ -381,36 +405,28 @@
         printBtn.addEventListener('click', function(){
             getQrPngForOutput(function(src){
                 if (!src) { alert('QR code is still loading — please try again in a moment.'); return; }
-                var eventLabel = input.value.trim() || 'Royal Color Analysis & Styling';
-                var safeLabel = eventLabel.replace(/[<>&"]/g, '');
-                var logoHtml = '';
-                if (currentLogoSrc) {
-                    var logoSrc = currentLogoSrc;
-                    if (logoSrc === DEFAULT_LOGO) {
-                        logoSrc = window.location.origin + '/' + DEFAULT_LOGO;
-                    }
-                    logoHtml = '<img class="logo" src="' + logoSrc + '" alt="Logo">';
-                }
-                var w = window.open('', '_blank');
-                w.document.write(
-                    '<!doctype html><html><head><title>Print QR — ' + safeLabel + '</title>' +
-                    '<style>body{font-family:Georgia,serif;text-align:center;padding:2rem;color:#222}' +
-                    'h1{font-size:1.6rem;margin-bottom:.25rem;color:#8B2252}' +
-                    'p{color:#666;margin-top:0;font-size:1rem}' +
-                    'img.qr{width:380px;height:380px;margin:1.5rem auto .5rem;display:block}' +
-                    'img.logo{max-width:240px;max-height:140px;height:auto;width:auto;margin:1rem auto;display:block}' +
-                    '.label{font-size:1.4rem;font-weight:bold;margin-top:.5rem}' +
-                    '@media print{body{padding:0}}</style></head><body>' +
-                    '<h1>Royal Color Analysis &amp; Styling</h1>' +
-                    '<p>Scan to stay in touch — color tips, event invites &amp; offers</p>' +
-                    '<img class="qr" src="' + src + '" alt="QR Code">' +
-                    '<div class="label">' + safeLabel + '</div>' +
-                    logoHtml +
-                    '<p style="font-size:.85rem;color:#888;margin-top:1.5rem;">royalcolor.net</p>' +
-                    '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>' +
-                    '</body></html>'
-                );
-                w.document.close();
+                buildCompositePng(src, function(finalSrc){
+                    var eventLabel = input.value.trim() || 'Royal Color Analysis & Styling';
+                    var safeLabel = eventLabel.replace(/[<>&"]/g, '');
+                    var w = window.open('', '_blank');
+                    w.document.write(
+                        '<!doctype html><html><head><title>Print QR — ' + safeLabel + '</title>' +
+                        '<style>body{font-family:Georgia,serif;text-align:center;padding:2rem;color:#222}' +
+                        'h1{font-size:1.6rem;margin-bottom:.25rem;color:#8B2252}' +
+                        'p{color:#666;margin-top:0;font-size:1rem}' +
+                        'img.qr{width:380px;height:380px;margin:1.5rem auto .5rem;display:block}' +
+                        '.label{font-size:1.4rem;font-weight:bold;margin-top:.5rem}' +
+                        '@media print{body{padding:0}}</style></head><body>' +
+                        '<h1>Royal Color Analysis &amp; Styling</h1>' +
+                        '<p>Scan to stay in touch — color tips, event invites &amp; offers</p>' +
+                        '<img class="qr" src="' + finalSrc + '" alt="QR Code">' +
+                        '<div class="label">' + safeLabel + '</div>' +
+                        '<p style="font-size:.85rem;color:#888;margin-top:1.5rem;">royalcolor.net</p>' +
+                        '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>' +
+                        '</body></html>'
+                    );
+                    w.document.close();
+                });
             });
         });
 
@@ -432,7 +448,7 @@
             if (!file) return;
             var reader = new FileReader();
             reader.onload = function(ev){
-                logoPreview.querySelector('.logo-label').textContent = 'Logo (printed below QR)';
+                logoPreview.querySelector('.logo-label').textContent = 'Logo (overlaid on QR center)';
                 setLogo(ev.target.result);
             };
             reader.readAsDataURL(file);
@@ -445,7 +461,7 @@
 
         resetLogoBtn.addEventListener('click', function(){
             logoFile.value = '';
-            logoPreview.querySelector('.logo-label').textContent = 'Logo (printed below QR)';
+            logoPreview.querySelector('.logo-label').textContent = 'Logo (overlaid on QR center)';
             setLogo(DEFAULT_LOGO);
         });
 
