@@ -66,6 +66,12 @@
             <div class="form-row" id="customUrlRow" style="display:none;">
                 <label for="customUrl">Custom URL</label>
                 <input type="url" id="customUrl" placeholder="https://www.royalcolor.net/some-page" autocomplete="off">
+                <div style="margin-top:.6rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+                    <label for="customColor" style="font-weight:400;color:var(--color-text-muted);font-size:.9rem;margin:0;">QR color:</label>
+                    <input type="color" id="customColor" value="#6B35A8" style="width:46px;height:34px;padding:0;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;">
+                    <span id="customColorHex" style="font-family:monospace;font-size:.85rem;color:var(--color-text-muted);">#6B35A8</span>
+                    <button type="button" id="resetColorBtn" style="background:none;border:none;color:var(--color-primary);text-decoration:underline;cursor:pointer;font-size:.85rem;padding:0;">Reset to black</button>
+                </div>
             </div>
 
             <div class="form-row">
@@ -117,6 +123,9 @@
         var destSelect  = document.getElementById('destination');
         var customUrlRow= document.getElementById('customUrlRow');
         var customUrl   = document.getElementById('customUrl');
+        var customColor = document.getElementById('customColor');
+        var customColorHex = document.getElementById('customColorHex');
+        var resetColorBtn = document.getElementById('resetColorBtn');
         var urlDisplay  = document.getElementById('urlDisplay');
         var qrCanvasDiv = document.getElementById('qrCanvas');
         var downloadBtn = document.getElementById('downloadBtn');
@@ -174,7 +183,19 @@
         // ---- Per-destination QR color theme ----
         function getQrTheme() {
             var v = (destSelect.value || '').toLowerCase();
-            if (v === '__custom__') v = (customUrl.value || '').toLowerCase();
+            if (destSelect.value === '__custom__') {
+                // Custom URL: also check for known hosts so IG/site colors still auto-apply,
+                // otherwise use the user-picked color.
+                var cu = (customUrl.value || '').toLowerCase();
+                if (cu.indexOf('instagram.com') !== -1) {
+                    return { type: 'gradient', stops: [
+                        [0.00, '#FEDA75'], [0.25, '#FA7E1E'], [0.50, '#D62976'],
+                        [0.75, '#962FBF'], [1.00, '#4F5BD5']
+                    ] };
+                }
+                var picked = (customColor && customColor.value) ? customColor.value : '#000000';
+                return { type: 'solid', color: picked };
+            }
             if (v.indexOf('instagram.com') !== -1) {
                 return { type: 'gradient', stops: [
                     [0.00, '#FEDA75'],   // warm yellow (bottom-left)
@@ -352,6 +373,16 @@
             render();
         });
         customUrl.addEventListener('input', render);
+
+        customColor.addEventListener('input', function(){
+            customColorHex.textContent = customColor.value.toUpperCase();
+            if (destSelect.value === '__custom__') render();
+        });
+        resetColorBtn.addEventListener('click', function(){
+            customColor.value = '#000000';
+            customColorHex.textContent = '#000000';
+            if (destSelect.value === '__custom__') render();
+        });
 
         function getQrPngForOutput(callback) {
             // Returns a usable PNG src (data URL preferred, API URL fallback)
