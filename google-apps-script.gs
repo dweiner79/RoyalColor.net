@@ -579,6 +579,9 @@ function getAnalyticsData(days, hours) {
   var cities      = {};
   var countries   = {};
   var utmSources  = {};
+  var utmMediums  = {};
+  var utmCampaigns = {};
+  var utmBreakdown = {}; // key: "source|medium|campaign"
   var browsers    = {};
   var osBreakdown = {};
   var timeOnPage  = [];
@@ -614,6 +617,8 @@ function getAnalyticsData(days, hours) {
     var browser = numCols >= 16 ? (row[15] || '').toString() : '';
     var os      = numCols >= 17 ? (row[16] || '').toString() : '';
     var utmSrc  = numCols >= 18 ? (row[17] || '').toString() : '';
+    var utmMed  = numCols >= 19 ? (row[18] || '').toString() : '';
+    var utmCmp  = numCols >= 20 ? (row[19] || '').toString() : '';
     var ts      = (row[0]  || '').toString();
 
     // Page views by day
@@ -674,8 +679,14 @@ function getAnalyticsData(days, hours) {
     // Countries
     if (country) countries[country] = (countries[country] || 0) + 1;
 
-    // UTM sources
+    // UTM sources / mediums / campaigns / combined breakdown
     if (utmSrc) utmSources[utmSrc] = (utmSources[utmSrc] || 0) + 1;
+    if (utmMed) utmMediums[utmMed] = (utmMediums[utmMed] || 0) + 1;
+    if (utmCmp) utmCampaigns[utmCmp] = (utmCampaigns[utmCmp] || 0) + 1;
+    if (utmSrc || utmMed || utmCmp) {
+      var bkey = (utmSrc || '(none)') + '|' + (utmMed || '(none)') + '|' + (utmCmp || '(none)');
+      utmBreakdown[bkey] = (utmBreakdown[bkey] || 0) + 1;
+    }
 
     // Browsers
     if (browser) browsers[browser] = (browsers[browser] || 0) + 1;
@@ -713,6 +724,26 @@ function getAnalyticsData(days, hours) {
   var utmArr = [];
   for (var u in utmSources) utmArr.push({ source: u, count: utmSources[u] });
   utmArr.sort(function (a, b) { return b.count - a.count; });
+
+  var utmMedArr = [];
+  for (var um in utmMediums) utmMedArr.push({ medium: um, count: utmMediums[um] });
+  utmMedArr.sort(function (a, b) { return b.count - a.count; });
+
+  var utmCmpArr = [];
+  for (var uc in utmCampaigns) utmCmpArr.push({ campaign: uc, count: utmCampaigns[uc] });
+  utmCmpArr.sort(function (a, b) { return b.count - a.count; });
+
+  var utmBreakdownArr = [];
+  for (var bk in utmBreakdown) {
+    var parts = bk.split('|');
+    utmBreakdownArr.push({
+      source:   parts[0] === '(none)' ? '' : parts[0],
+      medium:   parts[1] === '(none)' ? '' : parts[1],
+      campaign: parts[2] === '(none)' ? '' : parts[2],
+      count:    utmBreakdown[bk]
+    });
+  }
+  utmBreakdownArr.sort(function (a, b) { return b.count - a.count; });
 
   var browsersArr = [];
   for (var br in browsers) browsersArr.push({ browser: br, count: browsers[br] });
@@ -765,6 +796,9 @@ function getAnalyticsData(days, hours) {
     topCities:          citiesArr.slice(0, 10),
     topCountries:       countriesArr.slice(0, 10),
     utmSources:         utmArr.slice(0, 10),
+    utmMediums:         utmMedArr.slice(0, 10),
+    utmCampaigns:       utmCmpArr.slice(0, 10),
+    utmBreakdown:       utmBreakdownArr.slice(0, 25),
     browsers:           browsersArr,
     osBreakdown:        osArr,
     avgTimeOnPage:      avgTime,

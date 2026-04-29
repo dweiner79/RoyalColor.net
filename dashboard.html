@@ -239,6 +239,18 @@
                 </div>
             </div>
 
+            <!-- Row 4b: UTM Campaigns breakdown -->
+            <div class="chart-grid">
+                <div class="chart-card" style="grid-column:1 / -1;">
+                    <h3>UTM Campaigns</h3>
+                    <table class="dash-table" id="utmBreakdownTable">
+                        <thead><tr><th>Source</th><th>Medium</th><th>Campaign</th><th>Visits</th></tr></thead>
+                        <tbody id="utmBreakdownBody"></tbody>
+                    </table>
+                    <p id="utmBreakdownEmpty" style="color:var(--color-text-muted);font-size:.9rem;display:none;">No campaign data yet. Tag links with <code>?utm_source=qr&amp;utm_medium=print&amp;utm_campaign=F1</code>.</p>
+                </div>
+            </div>
+
             <!-- Row 5: Top Cities + Browser Breakdown -->
             <div class="chart-grid">
                 <div class="chart-card">
@@ -416,6 +428,7 @@ function renderDashboard(d) {
     renderEventsChart(d.events || []);
     renderReferrers(d.referrers || []);
     renderUTMChart(d.utmSources || []);
+    renderUTMBreakdown(d.utmBreakdown || []);
     renderCitiesTable(d.topCities || []);
     renderBrowserChart(d.browsers || []);
     renderOSChart(d.osBreakdown || []);
@@ -599,6 +612,30 @@ function renderUTMChart(utmSources) {
                 y: { ticks: { font: { size: 11 } } }
             }
         }
+    });
+}
+
+// ── UTM Campaigns Breakdown Table ─────────────────────────────────────────
+function renderUTMBreakdown(rows) {
+    var body = document.getElementById('utmBreakdownBody');
+    var table = document.getElementById('utmBreakdownTable');
+    var empty = document.getElementById('utmBreakdownEmpty');
+    body.innerHTML = '';
+    if (!rows || rows.length === 0) {
+        table.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+    table.style.display = 'table';
+    empty.style.display = 'none';
+    rows.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td>' + (r.source   || '<span style="color:var(--color-text-muted);">—</span>') + '</td>' +
+            '<td>' + (r.medium   || '<span style="color:var(--color-text-muted);">—</span>') + '</td>' +
+            '<td><strong>' + (r.campaign || '<span style="color:var(--color-text-muted);font-weight:normal;">—</span>') + '</strong></td>' +
+            '<td>' + r.count + '</td>';
+        body.appendChild(tr);
     });
 }
 
