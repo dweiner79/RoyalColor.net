@@ -30,12 +30,19 @@
             background:#fff;transition:var(--transition);
             -webkit-appearance:none;appearance:none;
         }
+        /* Re-enable native checkbox/radio rendering (the rule above strips it) */
+        .intake-form input[type="checkbox"],
+        .intake-form input[type="radio"]{
+            -webkit-appearance:auto;appearance:auto;
+            width:18px;height:18px;padding:0;border:0;background:transparent;
+            accent-color:var(--color-primary);
+        }
         .intake-form input:focus,
         .intake-form select:focus,
         .intake-form textarea:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
         .intake-form textarea{resize:vertical;min-height:80px}
         .check-row{display:flex;gap:.6rem;align-items:flex-start;font-size:.9rem;color:var(--color-text-muted);margin-bottom:1.25rem;line-height:1.45}
-        .check-row input{width:auto;margin-top:.2rem;flex-shrink:0}
+        .check-row input{margin-top:.2rem;flex-shrink:0}
         .submit-btn{width:100%;padding:1rem;font-size:1.05rem;font-weight:700}
         .intake-msg{margin-top:1rem;padding:.9rem 1rem;border-radius:var(--radius-md);font-size:.95rem;display:none}
         .intake-msg.error{background:#fdecea;color:#a3271a;border:1px solid #f5c4be;display:block}
