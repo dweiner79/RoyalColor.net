@@ -21,7 +21,14 @@
         .form-row input:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(139,34,82,.12)}
         .url-display{background:var(--color-cream);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:.75rem 1rem;font-family:monospace;font-size:.82rem;word-break:break-all;color:var(--color-text);margin-bottom:1rem;user-select:all}
         .qr-output{text-align:center;padding:1.5rem 0;border-top:1px solid var(--color-border);margin-top:1.25rem}
-        .qr-output canvas,.qr-output img{max-width:100%;height:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);background:#fff;padding:.75rem}
+        .qr-output canvas{max-width:100%;height:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);background:#fff;padding:.75rem}
+        .logo-preview{margin-top:1rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+        .logo-preview img{max-width:180px;max-height:120px;height:auto;display:block}
+        .logo-preview .logo-label{font-size:.78rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em}
+        .logo-controls{display:flex;gap:.5rem;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:.75rem;font-size:.85rem}
+        .logo-controls label{cursor:pointer;color:var(--color-primary);text-decoration:underline;font-weight:600}
+        .logo-controls input[type=file]{display:none}
+        .logo-controls .clear-logo{background:none;border:none;color:var(--color-text-muted);cursor:pointer;font-size:.85rem;text-decoration:underline}
         .btn-row{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
         .btn-row .btn{flex:1 1 auto;min-width:140px}
         .btn-secondary{background:#fff;border:2px solid var(--color-primary);color:var(--color-primary)}
@@ -51,6 +58,18 @@
 
             <div class="qr-output" id="qrOutput">
                 <div id="qrCanvas"></div>
+
+                <div class="logo-preview" id="logoPreview">
+                    <span class="logo-label">Logo (printed below QR)</span>
+                    <img id="logoImg" src="LOGO.png" alt="Logo" onerror="this.style.display='none'">
+                </div>
+                <div class="logo-controls">
+                    <label for="logoFile">Upload different logo</label>
+                    <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+                    <button type="button" class="clear-logo" id="clearLogo">No logo</button>
+                    <button type="button" class="clear-logo" id="resetLogo">Use default</button>
+                </div>
+
                 <div class="btn-row">
                     <button type="button" class="btn btn-primary" id="downloadBtn">Download PNG</button>
                     <button type="button" class="btn btn-secondary" id="copyUrlBtn">Copy URL</button>
@@ -70,6 +89,7 @@
     <script>
     (function(){
         var BASE_URL    = 'https://www.royalcolor.net/intake.html';
+        var DEFAULT_LOGO = 'LOGO.png';
         var input       = document.getElementById('eventName');
         var urlDisplay  = document.getElementById('urlDisplay');
         var qrCanvasDiv = document.getElementById('qrCanvas');
@@ -77,8 +97,15 @@
         var copyBtn     = document.getElementById('copyUrlBtn');
         var printBtn    = document.getElementById('printBtn');
         var copyMsg     = document.getElementById('copyMsg');
+        var logoImg     = document.getElementById('logoImg');
+        var logoPreview = document.getElementById('logoPreview');
+        var logoFile    = document.getElementById('logoFile');
+        var clearLogoBtn= document.getElementById('clearLogo');
+        var resetLogoBtn= document.getElementById('resetLogo');
 
         var currentUrl  = BASE_URL;
+        // currentLogoSrc: '' = none, otherwise URL or data URL used in print
+        var currentLogoSrc = DEFAULT_LOGO;
 
         function buildUrl(eventName) {
             var trimmed = (eventName || '').trim();
@@ -147,24 +174,78 @@
             if (!canvas) return;
             var dataUrl = canvas.toDataURL('image/png');
             var eventLabel = input.value.trim() || 'Royal Color Analysis & Styling';
+            var safeLabel = eventLabel.replace(/[<>&"]/g, '');
+            var logoHtml = '';
+            if (currentLogoSrc) {
+                // Use absolute URL for default logo so the popup window can find it
+                var src = currentLogoSrc;
+                if (src === DEFAULT_LOGO) {
+                    src = window.location.origin + '/' + DEFAULT_LOGO;
+                }
+                logoHtml = '<img class="logo" src="' + src + '" alt="Logo">';
+            }
             var w = window.open('', '_blank');
             w.document.write(
-                '<!doctype html><html><head><title>Print QR — ' + eventLabel + '</title>' +
+                '<!doctype html><html><head><title>Print QR — ' + safeLabel + '</title>' +
                 '<style>body{font-family:Georgia,serif;text-align:center;padding:2rem;color:#222}' +
                 'h1{font-size:1.6rem;margin-bottom:.25rem;color:#8B2252}' +
                 'p{color:#666;margin-top:0;font-size:1rem}' +
-                'img{width:380px;height:380px;margin:1.5rem auto;display:block}' +
+                'img.qr{width:380px;height:380px;margin:1.5rem auto .5rem;display:block}' +
+                'img.logo{max-width:240px;max-height:140px;height:auto;width:auto;margin:1rem auto;display:block}' +
                 '.label{font-size:1.4rem;font-weight:bold;margin-top:.5rem}' +
                 '@media print{body{padding:0}}</style></head><body>' +
                 '<h1>Royal Color Analysis &amp; Styling</h1>' +
                 '<p>Scan to stay in touch — color tips, event invites &amp; offers</p>' +
-                '<img src="' + dataUrl + '" alt="QR Code">' +
-                '<div class="label">' + eventLabel.replace(/[<>&]/g, '') + '</div>' +
+                '<img class="qr" src="' + dataUrl + '" alt="QR Code">' +
+                '<div class="label">' + safeLabel + '</div>' +
+                logoHtml +
                 '<p style="font-size:.85rem;color:#888;margin-top:1.5rem;">royalcolor.net</p>' +
-                '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>' +
+                '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>' +
                 '</body></html>'
             );
             w.document.close();
+        });
+
+        // ---- Logo handlers ----
+        function setLogo(src) {
+            currentLogoSrc = src || '';
+            if (currentLogoSrc) {
+                logoImg.src = currentLogoSrc;
+                logoImg.style.display = '';
+                logoPreview.style.display = '';
+            } else {
+                logoImg.style.display = 'none';
+                logoPreview.querySelector('.logo-label').textContent = 'No logo will be printed';
+            }
+        }
+
+        logoFile.addEventListener('change', function(e){
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev){
+                logoPreview.querySelector('.logo-label').textContent = 'Logo (printed below QR)';
+                setLogo(ev.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        clearLogoBtn.addEventListener('click', function(){
+            logoFile.value = '';
+            setLogo('');
+        });
+
+        resetLogoBtn.addEventListener('click', function(){
+            logoFile.value = '';
+            logoPreview.querySelector('.logo-label').textContent = 'Logo (printed below QR)';
+            setLogo(DEFAULT_LOGO);
+        });
+
+        // If default logo fails to load, hide the preview but keep controls
+        logoImg.addEventListener('error', function(){
+            logoImg.style.display = 'none';
+            logoPreview.querySelector('.logo-label').textContent = 'No logo found — upload one below';
+            currentLogoSrc = '';
         });
 
         // Initial render with empty input → base URL
