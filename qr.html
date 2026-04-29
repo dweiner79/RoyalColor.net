@@ -111,7 +111,7 @@
     (function(){
         var BASE_URL    = 'https://www.royalcolor.net/intake.html';
         var DEFAULT_LOGO = 'LOGO.png';
-        var QR_COLOR    = '8B2252';   // hex without # for the API fallback
+        var QR_COLOR    = '000000';   // black, hex without # for API fallback
         var input       = document.getElementById('eventName');
         var destSelect  = document.getElementById('destination');
         var customUrlRow= document.getElementById('customUrlRow');
@@ -217,7 +217,7 @@
                     text: currentUrl,
                     width: 320,
                     height: 320,
-                    colorDark : '#8B2252',
+                    colorDark : '#000000',
                     colorLight: '#FFFFFF',
                     correctLevel : QRCode.CorrectLevel.M
                 });
@@ -279,17 +279,70 @@
             callback('');
         }
 
+        // Composite QR + (optional) logo into a single PNG and return its data URL.
+        function buildCompositePng(qrSrc, callback) {
+            var qr = new Image();
+            qr.crossOrigin = 'anonymous';
+            qr.onload = function(){
+                var QR_SIZE = qr.naturalWidth || 320;
+                var PAD = 32;
+                var LOGO_MAX_W = Math.round(QR_SIZE * 0.75);
+                var LOGO_MAX_H = Math.round(QR_SIZE * 0.45);
+
+                function drawAndExport(logoImgEl) {
+                    var logoW = 0, logoH = 0;
+                    if (logoImgEl) {
+                        var lw = logoImgEl.naturalWidth, lh = logoImgEl.naturalHeight;
+                        if (lw && lh) {
+                            var scale = Math.min(LOGO_MAX_W / lw, LOGO_MAX_H / lh, 1);
+                            logoW = Math.round(lw * scale);
+                            logoH = Math.round(lh * scale);
+                        }
+                    }
+                    var totalH = QR_SIZE + (logoH ? PAD + logoH : 0);
+                    var c = document.createElement('canvas');
+                    c.width = QR_SIZE;
+                    c.height = totalH;
+                    var ctx = c.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.drawImage(qr, 0, 0, QR_SIZE, QR_SIZE);
+                    if (logoImgEl && logoW && logoH) {
+                        var x = Math.round((QR_SIZE - logoW) / 2);
+                        var y = QR_SIZE + PAD;
+                        ctx.drawImage(logoImgEl, x, y, logoW, logoH);
+                    }
+                    try { callback(c.toDataURL('image/png')); }
+                    catch (e) { callback(qrSrc); }   // CORS taint — fall back to QR-only
+                }
+
+                if (!currentLogoSrc) return drawAndExport(null);
+                var logo = new Image();
+                logo.crossOrigin = 'anonymous';
+                logo.onload  = function(){ drawAndExport(logo); };
+                logo.onerror = function(){ drawAndExport(null); };
+                // Resolve relative default logo path
+                logo.src = (currentLogoSrc === DEFAULT_LOGO)
+                    ? (window.location.origin + '/' + DEFAULT_LOGO)
+                    : currentLogoSrc;
+            };
+            qr.onerror = function(){ callback(qrSrc); };
+            qr.src = qrSrc;
+        }
+
         downloadBtn.addEventListener('click', function(){
             getQrPngForOutput(function(src){
                 if (!src) { alert('QR code is still loading — please try again in a moment.'); return; }
-                var name = (input.value.trim() || 'royalcolor-intake')
-                    .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
-                var link = document.createElement('a');
-                link.download = 'qr-' + name + '.png';
-                link.href = src;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                buildCompositePng(src, function(finalSrc){
+                    var name = (input.value.trim() || 'royalcolor-qr')
+                        .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+                    var link = document.createElement('a');
+                    link.download = 'qr-' + name + '.png';
+                    link.href = finalSrc;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
             });
         });
 
