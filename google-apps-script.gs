@@ -93,6 +93,10 @@ function doGet(e) {
         // Returns current booking configuration
         result = getBookingConfig();
         break;
+      case 'getLeads':
+        // Returns intake leads for the admin view
+        result = getLeads(p.limit ? parseInt(p.limit) : 500);
+        break;
       default:
         result = { error: 'Unknown action' };
     }
@@ -858,5 +862,46 @@ function logIntake(data) {
     return { ok: true, message: 'Thanks, ' + name.split(' ')[0] + '! You\'re on the list.' };
   } catch (err) {
     return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Returns the most recent leads (newest first), capped at `limit` rows.
+ * Called from doGet with action=getLeads&limit=500
+ */
+function getLeads(limit) {
+  try {
+    var sheet = getOrCreateLeadsSheet();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { leads: [] };
+
+    var max = Math.min(lastRow - 1, limit || 500);
+    var startRow = lastRow - max + 1;
+    var data = sheet.getRange(startRow, 1, max, 9).getValues();
+
+    var tz = Session.getScriptTimeZone();
+    var leads = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      var ts = r[0];
+      var tsStr = ts instanceof Date
+        ? Utilities.formatDate(ts, tz, 'yyyy-MM-dd HH:mm')
+        : (ts || '').toString();
+      leads.push({
+        timestamp:   tsStr,
+        name:        (r[1] || '').toString(),
+        phone:       (r[2] || '').toString(),
+        email:       (r[3] || '').toString(),
+        eventSource: (r[4] || '').toString(),
+        notes:       (r[5] || '').toString(),
+        consent:     (r[6] || '').toString(),
+        ip:          (r[7] || '').toString(),
+        userAgent:   (r[8] || '').toString()
+      });
+    }
+    leads.reverse();   // newest first
+    return { leads: leads, total: lastRow - 1 };
+  } catch (err) {
+    return { error: err.message };
   }
 }

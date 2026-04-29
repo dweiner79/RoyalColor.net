@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Leads — Royal Color Analysis</title>
+    <link rel="icon" type="image/png" href="LOGO.png">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background: var(--color-cream); }
+        .leads-wrap { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .leads-card { background: #fff; border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-md); }
+        .leads-header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+        .leads-header h1 { font-family: var(--font-heading); color: var(--color-primary); margin: 0; }
+        .leads-meta { color: var(--color-text-muted); font-size: .9rem; }
+        .leads-controls { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; }
+        .leads-controls input[type="search"] {
+            flex: 1; min-width: 220px; padding: .65rem .85rem;
+            border: 2px solid var(--color-border); border-radius: var(--radius-md);
+            font: inherit; font-size: .95rem; background: #fff;
+        }
+        .leads-controls input[type="search"]:focus { outline: none; border-color: var(--color-primary); }
+        .btn-sm { padding: .55rem 1rem; font-size: .9rem; border-radius: var(--radius-md); border: 0; cursor: pointer; font-weight: 600; }
+        .btn-purple { background: var(--color-primary); color: #fff; }
+        .btn-purple:hover { background: var(--color-primary-dark); }
+        .btn-outline { background: #fff; color: var(--color-primary); border: 2px solid var(--color-primary); }
+        .btn-outline:hover { background: var(--color-primary); color: #fff; }
+        .table-scroll { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+        table.leads { width: 100%; border-collapse: collapse; font-size: .9rem; }
+        table.leads th, table.leads td { padding: .65rem .8rem; text-align: left; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+        table.leads th { background: #faf6fc; font-weight: 700; color: var(--color-primary); position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none; }
+        table.leads th:hover { background: #f4ebfa; }
+        table.leads tr:nth-child(even) td { background: #fcfaff; }
+        table.leads tr:hover td { background: #f7f1fb; }
+        table.leads td.notes { max-width: 280px; white-space: pre-wrap; word-break: break-word; }
+        table.leads td a { color: var(--color-primary); text-decoration: none; }
+        table.leads td a:hover { text-decoration: underline; }
+        .empty, .loading { text-align: center; padding: 3rem 1rem; color: var(--color-text-muted); }
+        .src-badge { display: inline-block; background: rgba(107,53,168,.1); color: var(--color-primary); padding: .15rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+        .consent-yes { color: #1f6b3a; font-weight: 600; }
+        .consent-no { color: #a3271a; font-weight: 600; }
+        /* Auth */
+        .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+        .auth-box { background: #fff; border-radius: var(--radius-md); padding: 2.5rem; box-shadow: var(--shadow-md); max-width: 380px; width: 100%; }
+        .auth-box h2 { font-family: var(--font-heading); color: var(--color-primary); margin-bottom: 1.25rem; text-align: center; }
+        .auth-form-group { margin-bottom: 1rem; }
+        .auth-form-group label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; color: var(--color-text-muted); }
+        .auth-form-group input { width: 100%; padding: .65rem .9rem; border: 2px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; font-size: .95rem; box-sizing: border-box; }
+        .auth-form-group input:focus { outline: none; border-color: var(--color-primary); }
+        .auth-error { color: #c0392b; font-size: .85rem; margin-top: .5rem; display: none; text-align: center; }
+        .auth-box button { width: 100%; padding: .8rem; margin-top: .5rem; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════ LOGIN ═══════ -->
+<div id="authLogin" class="auth-screen">
+    <div class="auth-box">
+        <h2>Leads Login</h2>
+        <form onsubmit="return handleLogin(event)">
+            <div class="auth-form-group">
+                <label for="loginUser">Username</label>
+                <input type="text" id="loginUser" autocomplete="username" required>
+            </div>
+            <div class="auth-form-group">
+                <label for="loginPass">Password</label>
+                <input type="password" id="loginPass" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn-sm btn-purple">Sign In</button>
+            <p class="auth-error" id="loginError">Invalid username or password.</p>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════ MAIN ═══════ -->
+<div id="leadsMain" class="leads-wrap" style="display:none;">
+    <div class="leads-card">
+        <div class="leads-header">
+            <div>
+                <h1>Customer Leads</h1>
+                <div class="leads-meta" id="leadsMeta">Loading…</div>
+            </div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                <button type="button" class="btn-sm btn-outline" onclick="loadLeads()">Refresh</button>
+                <button type="button" class="btn-sm btn-outline" onclick="exportCsv()">Export CSV</button>
+                <button type="button" class="btn-sm btn-outline" onclick="handleLogout()">Sign Out</button>
+            </div>
+        </div>
+
+        <div class="leads-controls">
+            <input type="search" id="searchInput" placeholder="Search name, phone, email, event, notes…" oninput="renderTable()">
+            <select id="consentFilter" onchange="renderTable()" style="padding:.65rem .85rem;border:2px solid var(--color-border);border-radius:var(--radius-md);font:inherit;font-size:.9rem;background:#fff;">
+                <option value="">All consent</option>
+                <option value="Yes">Consented</option>
+                <option value="No">Not consented</option>
+            </select>
+        </div>
+
+        <div id="tableContainer">
+            <div class="loading">Loading leads…</div>
+        </div>
+    </div>
+</div>
+
+<script>
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
+var ADMIN_USER = 'Admin';
+var ADMIN_PASS = 'Password!';
+
+var allLeads = [];
+var sortKey = 'timestamp';
+var sortDir = -1;  // -1 = desc (newest first)
+
+/* ── Auth ── */
+function handleLogin(e) {
+    e.preventDefault();
+    var u = document.getElementById('loginUser').value;
+    var p = document.getElementById('loginPass').value;
+    if (u === ADMIN_USER && p === ADMIN_PASS) {
+        sessionStorage.setItem('rc_leads_auth', '1');
+        showLeads();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+    return false;
+}
+function handleLogout() {
+    sessionStorage.removeItem('rc_leads_auth');
+    location.reload();
+}
+function showLeads() {
+    document.getElementById('authLogin').style.display = 'none';
+    document.getElementById('leadsMain').style.display = 'block';
+    loadLeads();
+}
+(function check() {
+    if (sessionStorage.getItem('rc_leads_auth') === '1') showLeads();
+})();
+
+/* ── Data ── */
+function loadLeads() {
+    document.getElementById('tableContainer').innerHTML = '<div class="loading">Loading leads…</div>';
+    document.getElementById('leadsMeta').textContent = 'Loading…';
+    fetch(APPS_SCRIPT_URL + '?action=getLeads&limit=1000')
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+            if (j.error) {
+                document.getElementById('tableContainer').innerHTML = '<div class="empty">Error: ' + escapeHtml(j.error) + '</div>';
+                return;
+            }
+            allLeads = j.leads || [];
+            document.getElementById('leadsMeta').textContent = allLeads.length + ' lead' + (allLeads.length === 1 ? '' : 's') + ' • Showing newest first';
+            renderTable();
+        })
+        .catch(function(err){
+            document.getElementById('tableContainer').innerHTML = '<div class="empty">Could not load leads. ' + escapeHtml(err.message || err) + '</div>';
+        });
+}
+
+/* ── Render ── */
+function escapeHtml(s) {
+    return (s == null ? '' : String(s))
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function getFiltered() {
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    var consent = document.getElementById('consentFilter').value;
+    var rows = allLeads.slice();
+    if (consent) rows = rows.filter(function(r){ return r.consent === consent; });
+    if (q) {
+        rows = rows.filter(function(r){
+            return (r.name + ' ' + r.phone + ' ' + r.email + ' ' + r.eventSource + ' ' + r.notes).toLowerCase().indexOf(q) !== -1;
+        });
+    }
+    rows.sort(function(a,b){
+        var av = (a[sortKey] || '').toString().toLowerCase();
+        var bv = (b[sortKey] || '').toString().toLowerCase();
+        if (av < bv) return -1 * sortDir;
+        if (av > bv) return  1 * sortDir;
+        return 0;
+    });
+    return rows;
+}
+
+function setSort(key) {
+    if (sortKey === key) sortDir = -sortDir;
+    else { sortKey = key; sortDir = (key === 'timestamp') ? -1 : 1; }
+    renderTable();
+}
+
+function renderTable() {
+    var rows = getFiltered();
+    var arrow = function(k){ return sortKey === k ? (sortDir === 1 ? ' ↑' : ' ↓') : ''; };
+    var html = '<div class="table-scroll"><table class="leads"><thead><tr>'
+        + '<th onclick="setSort(\'timestamp\')">When' + arrow('timestamp') + '</th>'
+        + '<th onclick="setSort(\'name\')">Name' + arrow('name') + '</th>'
+        + '<th onclick="setSort(\'phone\')">Phone' + arrow('phone') + '</th>'
+        + '<th onclick="setSort(\'email\')">Email' + arrow('email') + '</th>'
+        + '<th onclick="setSort(\'eventSource\')">Event/Source' + arrow('eventSource') + '</th>'
+        + '<th onclick="setSort(\'consent\')">Consent' + arrow('consent') + '</th>'
+        + '<th>Notes</th>'
+        + '</tr></thead><tbody>';
+
+    if (rows.length === 0) {
+        html += '<tr><td colspan="7" class="empty">No leads match your filters.</td></tr>';
+    } else {
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var phoneCell = r.phone ? '<a href="tel:' + escapeHtml(r.phone.replace(/[^\d+]/g,'')) + '">' + escapeHtml(r.phone) + '</a>' : '';
+            var emailCell = r.email ? '<a href="mailto:' + escapeHtml(r.email) + '">' + escapeHtml(r.email) + '</a>' : '';
+            var srcCell = r.eventSource ? '<span class="src-badge">' + escapeHtml(r.eventSource) + '</span>' : '';
+            var conCls = r.consent === 'Yes' ? 'consent-yes' : 'consent-no';
+            html += '<tr>'
+                + '<td>' + escapeHtml(r.timestamp) + '</td>'
+                + '<td><strong>' + escapeHtml(r.name) + '</strong></td>'
+                + '<td>' + phoneCell + '</td>'
+                + '<td>' + emailCell + '</td>'
+                + '<td>' + srcCell + '</td>'
+                + '<td class="' + conCls + '">' + escapeHtml(r.consent) + '</td>'
+                + '<td class="notes">' + escapeHtml(r.notes) + '</td>'
+                + '</tr>';
+        }
+    }
+    html += '</tbody></table></div>';
+    document.getElementById('tableContainer').innerHTML = html;
+}
+
+/* ── CSV export ── */
+function exportCsv() {
+    var rows = getFiltered();
+    if (rows.length === 0) { alert('No leads to export.'); return; }
+    var headers = ['Timestamp','Name','Phone','Email','Event/Source','Consent','Notes'];
+    var lines = [headers.join(',')];
+    function esc(s){ s = (s == null ? '' : String(s)); return '"' + s.replace(/"/g,'""') + '"'; }
+    for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        lines.push([r.timestamp, r.name, r.phone, r.email, r.eventSource, r.consent, r.notes].map(esc).join(','));
+    }
+    var blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'royalcolor-leads-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+</script>
+
+</body>
+</html>
