@@ -1,0 +1,62 @@
+{
+  "site_name": "Royal Color Analysis & Styling",
+  "canonical_origin": "https://www.royalcolor.net/",
+  "sitemap_url": "https://www.royalcolor.net/sitemap.xml",
+  "booking_url": "https://www.royalcolor.net/booking.html",
+  "review_url": "https://g.page/r/CZZCpP539GrHEBM/review",
+  "expected_sitemap_urls": 9,
+  "post_topics": [
+    {
+      "title": "Discover Your 16-Season Palette",
+      "text": "Professional fabric draping reveals the colors that complement your skin, eyes, and hair. Each personal color analysis includes a physical color wallet plus guidance for hair, makeup, outfits, and accessories. Appointments are available across South Florida. {booking_url}",
+      "call_to_action": "Book"
+    },
+    {
+      "title": "Refresh Your Wardrobe",
+      "text": "A wardrobe edit can turn an overcrowded closet into a practical collection that works with your best colors and personal style. In-home wardrobe edits are available across Miami-Dade, Broward, and Palm Beach County. {booking_url}",
+      "call_to_action": "Book"
+    },
+    {
+      "title": "Make It a Color Party",
+      "text": "Share the color-analysis experience with friends, family, or colleagues. Royal Color group parties give each participant personalized color guidance in a memorable group setting. Groups of 2-5 are welcome. {booking_url}",
+      "call_to_action": "Book"
+    },
+    {
+      "title": "Shop With Your Best Colors",
+      "text": "Personal shopping support makes it easier to choose flattering clothing and accessories that fit your palette, lifestyle, and budget. Sessions are available in stores across South Florida or online. {booking_url}",
+      "call_to_action": "Book"
+    }
+  ],
+  "citations": [
+    {
+      "name": "Google Business Profile",
+      "status": "verified",
+      "url": "https://www.google.com/maps?cid=14369566357289452182"
+    },
+    {
+      "name": "Bing Places",
+      "status": "not_configured",
+      "url": ""
+    },
+    {
+      "name": "Apple Business Connect",
+      "status": "not_configured",
+      "url": ""
+    },
+    {
+      "name": "Yelp",
+      "status": "not_configured",
+      "url": ""
+    },
+    {
+      "name": "Nextdoor Business",
+      "status": "not_configured",
+      "url": ""
+    },
+    {
+      "name": "Local chamber or business directory",
+      "status": "not_configured",
+      "url": ""
+    }
+  ]
+}

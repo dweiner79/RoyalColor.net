@@ -5,6 +5,7 @@ Desktop.ini
 
 # Editor files
 .vscode/
+.playwright-mcp/
 *.swp
 *.swo
 *~
@@ -20,6 +21,11 @@ package-lock.json
 # Build output
 dist/
 .output/
+seo-bot-report/
+
+# Python
+__pycache__/
+*.py[cod]
 
 # Azure Static Web Apps
 .azure/

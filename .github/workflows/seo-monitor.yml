@@ -1,0 +1,72 @@
+name: SEO and Local Visibility Monitor
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: seo-local-visibility-monitor
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit and prepare approval issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        working-directory: automation
+        run: python -m unittest -v test_seo_bot.py
+
+      - name: Generate SEO report
+        id: audit
+        continue-on-error: true
+        run: python automation/seo_bot.py --output-dir seo-bot-report
+
+      - name: Upload report
+        if: always() && hashFiles('seo-bot-report/report.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-bot-report-${{ github.run_number }}
+          path: seo-bot-report/
+          retention-days: 30
+
+      - name: Create or update approval issue
+        if: always() && hashFiles('seo-bot-report/report.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_TITLE: "SEO bot: weekly review and approval"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          printf '\n---\n[View workflow run](%s)\n' "$RUN_URL" >> seo-bot-report/report.md
+          issue_number=$(gh issue list \
+            --state open \
+            --search '"SEO bot: weekly review and approval" in:title' \
+            --json number,title \
+            --jq '.[] | select(.title == env.ISSUE_TITLE) | .number' \
+            | head -n 1)
+
+          if [[ -n "$issue_number" ]]; then
+            gh issue edit "$issue_number" --body-file seo-bot-report/report.md
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file seo-bot-report/report.md
+          fi
+
+      - name: Fail when technical SEO needs attention
+        if: steps.audit.outcome == 'failure'
+        run: exit 1
