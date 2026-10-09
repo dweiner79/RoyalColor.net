@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Color Analysis Services South Florida | Royal Color</title>
-    <meta name="description" content="Explore 16-season color analysis, wardrobe edits, personal shopping, and group color parties in Miami-Dade, Broward, and Palm Beach County.">
+    <meta name="description" content="Book a 90-minute, 16-season color analysis in South Florida for $279, including fabric draping, a physical color wallet, and personalized guidance.">
     <link rel="canonical" href="https://www.royalcolor.net/services.html">
     <link rel="icon" type="image/png" sizes="192x192" href="https://www.royalcolor.net/favicon.png">
     <!-- Open Graph -->
@@ -190,8 +190,17 @@
         </div>
     </section>
 
+    <!-- Service Areas -->
+    <section class="section" style="background:var(--color-cream);">
+        <div class="container" style="max-width:900px;text-align:center;">
+            <span class="section-label">Serving South Florida</span>
+            <h2 class="section-title">Personal Color Analysis Near You</h2>
+            <p>Royal Color provides studio and mobile appointments across South Florida. Explore session details for <a href="color-analysis-broward-county.html">Broward County</a>, <a href="color-analysis-miami-dade.html">Miami-Dade County</a>, and <a href="color-analysis-palm-beach-county.html">Palm Beach County</a>.</p>
+        </div>
+    </section>
+
     <!-- Gift Certificates -->
-    <section class="section" style="background: var(--color-cream);">
+    <section class="section">
         <div class="container" style="max-width:700px;text-align:center;">
             <div class="service-icon" style="margin:0 auto 1.5rem;font-size:3rem;">&#127873;</div>
             <span class="section-label">Give the Gift of Color</span>
@@ -322,5 +331,45 @@
 
     <script src="js/main.js"></script>
     <script src="js/analytics.js"></script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Service",
+                "@id": "https://www.royalcolor.net/services.html#color-analysis",
+                "name": "Personal Color Analysis",
+                "serviceType": "16-season personal color analysis",
+                "description": "A 90-minute in-person color analysis with professional fabric draping, a physical color wallet, and personalized hair and makeup guidance.",
+                "provider": {
+                    "@type": "ProfessionalService",
+                    "@id": "https://www.royalcolor.net/#business",
+                    "name": "Royal Color Analysis & Styling",
+                    "telephone": "+1-305-528-5888",
+                    "url": "https://www.royalcolor.net/"
+                },
+                "areaServed": [
+                    { "@type": "AdministrativeArea", "name": "Miami-Dade County, Florida" },
+                    { "@type": "AdministrativeArea", "name": "Broward County, Florida" },
+                    { "@type": "AdministrativeArea", "name": "Palm Beach County, Florida" }
+                ],
+                "offers": {
+                    "@type": "Offer",
+                    "price": "279",
+                    "priceCurrency": "USD",
+                    "url": "https://www.royalcolor.net/booking.html"
+                },
+                "url": "https://www.royalcolor.net/services.html"
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.royalcolor.net/" },
+                    { "@type": "ListItem", "position": 2, "name": "Services", "item": "https://www.royalcolor.net/services.html" }
+                ]
+            }
+        ]
+    }
+    </script>
 </body>
 </html>
