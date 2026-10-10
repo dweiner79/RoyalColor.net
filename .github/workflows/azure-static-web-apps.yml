@@ -30,6 +30,12 @@ jobs:
           output_location: ""
           skip_app_build: true
 
+      - name: Notify IndexNow
+        if: github.event_name == 'push'
+        continue-on-error: true
+        timeout-minutes: 2
+        run: python automation/submit_indexnow.py
+
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
