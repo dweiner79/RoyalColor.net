@@ -35,8 +35,8 @@
     },
     {
       "name": "Bing Places",
-      "status": "not_configured",
-      "url": ""
+      "status": "verified",
+      "url": "https://www.bing.com/maps?ss=ypid.YN3FD40BE062CDB73D"
     },
     {
       "name": "Apple Business Connect",
@@ -45,7 +45,7 @@
     },
     {
       "name": "Yelp",
-      "status": "not_configured",
+      "status": "paused",
       "url": ""
     },
     {
