@@ -1,0 +1,61 @@
+name: Review Reply Bot
+
+on:
+  schedule:
+    - cron: "30 15 * * *"
+  workflow_dispatch:
+    inputs:
+      post:
+        description: "Publish replies (otherwise preview only)"
+        type: boolean
+        default: false
+      discover:
+        description: "Print Google account and location IDs instead of replying"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+  models: read
+
+concurrency:
+  group: review-reply-bot
+  cancel-in-progress: false
+
+jobs:
+  reply:
+    name: Reply to reviews older than one day
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s automation -p "test_*.py" -v
+
+      - name: Reply to reviews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GBP_CLIENT_ID: ${{ secrets.GBP_CLIENT_ID }}
+          GBP_CLIENT_SECRET: ${{ secrets.GBP_CLIENT_SECRET }}
+          GBP_REFRESH_TOKEN: ${{ secrets.GBP_REFRESH_TOKEN }}
+          GBP_ACCOUNT_ID: ${{ vars.GBP_ACCOUNT_ID }}
+          GBP_LOCATION_ID: ${{ vars.GBP_LOCATION_ID }}
+          # Scheduled runs only publish once the repository variable REVIEW_BOT_POST is "true".
+          POST_ENABLED: ${{ (github.event_name == 'workflow_dispatch' && inputs.post) || (github.event_name == 'schedule' && vars.REVIEW_BOT_POST == 'true') }}
+          DISCOVER: ${{ github.event_name == 'workflow_dispatch' && inputs.discover }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$DISCOVER" == "true" ]]; then args+=(--discover); fi
+          if [[ "$POST_ENABLED" == "true" ]]; then args+=(--post); fi
+          python automation/review_replies.py "${args[@]}"
