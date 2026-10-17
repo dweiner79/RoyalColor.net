@@ -69,19 +69,9 @@
 <div id="authLogin" class="auth-screen" style="background:var(--color-cream);">
     <div class="auth-box">
         <h2>Admin</h2>
-        <p class="sub">Sign in to access admin tools.</p>
-        <form onsubmit="return handleLogin(event)">
-            <div class="auth-form-group">
-                <label for="loginUser">Username</label>
-                <input type="text" id="loginUser" autocomplete="username" required>
-            </div>
-            <div class="auth-form-group">
-                <label for="loginPass">Password</label>
-                <input type="password" id="loginPass" autocomplete="current-password" required>
-            </div>
-            <p class="auth-error" id="loginError">Invalid username or password.</p>
-            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
-        </form>
+        <p class="sub">Sign in with an authorized Google account.</p>
+        <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+        <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
     </div>
 </div>
 
@@ -146,34 +136,21 @@
     </div>
 </div>
 
+<script src="js/admin-auth.js"></script>
 <script>
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
-
-function handleLogin(e) {
-    e.preventDefault();
-    var u = document.getElementById('loginUser').value;
-    var p = document.getElementById('loginPass').value;
-    if (u === ADMIN_USER && p === ADMIN_PASS) {
-        sessionStorage.setItem('rc_admin_auth', '1');
-        showHub();
-    } else {
-        document.getElementById('loginError').style.display = 'block';
-    }
-    return false;
-}
 function handleLogout() {
-    sessionStorage.removeItem('rc_admin_auth');
-    sessionStorage.removeItem('rc_leads_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 function showHub() {
     document.getElementById('authLogin').style.display = 'none';
     document.getElementById('hubMain').style.display = 'block';
 }
-(function check() {
-    if (sessionStorage.getItem('rc_admin_auth') === '1') showHub();
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showHub,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 </script>
 
 </body>

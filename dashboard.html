@@ -106,21 +106,9 @@
     <div id="authLogin" class="auth-screen dash-wrap">
         <div class="auth-box">
             <h2>&#128274; Admin Dashboard</h2>
-            <p>Enter your credentials to view site analytics.</p>
-            <form id="loginForm" onsubmit="return handleLogin(event)">
-                <div class="form-group">
-                    <label for="loginUser">Username</label>
-                    <input type="text" id="loginUser" autocomplete="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPass">Password</label>
-                    <input type="password" id="loginPass" autocomplete="current-password" required>
-                </div>
-                <p class="auth-error" id="loginError">Invalid username or password.</p>
-                <button type="submit" class="btn btn-primary" style="display:inline-block;width:100%;margin-top:.5rem;">
-                    Sign In
-                </button>
-            </form>
+            <p>Sign in with an authorized Google account to view site analytics.</p>
+            <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+            <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
         </div>
     </div>
 
@@ -314,35 +302,19 @@
         </div>
     </div>
 
+<script src="js/admin-auth.js"></script>
 <script>
 /* ============================================================================
    DASHBOARD — Authentication + Data Loading
    ============================================================================ */
 
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-
 var charts = {};
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
 var currentDays = 30;
 var lastData = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-function handleLogin(e) {
-    e.preventDefault();
-    var user = document.getElementById('loginUser').value;
-    var pass = document.getElementById('loginPass').value;
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        sessionStorage.setItem('rc_dash_auth', '1');
-        showDashboard();
-    } else {
-        document.getElementById('loginError').style.display = 'block';
-    }
-    return false;
-}
-
 function handleLogout() {
-    sessionStorage.removeItem('rc_dash_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 
@@ -352,9 +324,11 @@ function showDashboard() {
     loadDashboard();
 }
 
-(function checkSession() {
-    if (sessionStorage.getItem('rc_dash_auth') === '1') showDashboard();
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showDashboard,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 
 // ── Load Data ─────────────────────────────────────────────────────────────
 function setRange(days) {
@@ -366,12 +340,10 @@ function setRange(days) {
 
 function loadDashboard() {
     document.getElementById('dashLoading').style.display = 'block';
-    var query = currentDays === 0
-        ? '?action=analytics&hours=24'
-        : '?action=analytics&days=' + currentDays;
-    fetch(APPS_SCRIPT_URL + query)
-        .then(function(r) { return r.json(); })
+    var request = currentDays === 0 ? { hours: 24 } : { days: currentDays };
+    rcAdmin.call('adminAnalytics', request)
         .then(function(d) {
+            if (d && d.error) { throw new Error(d.error); }
             lastData = d;
             document.getElementById('dashLoading').style.display = 'none';
             renderDashboard(d);
@@ -379,6 +351,7 @@ function loadDashboard() {
         .catch(function(err) {
             document.getElementById('dashLoading').style.display = 'none';
             console.error('Dashboard load error:', err);
+            if (!rcAdmin.hasToken()) location.reload();
         });
 }
 

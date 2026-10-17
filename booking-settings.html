@@ -114,19 +114,9 @@
 <div id="authLogin" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-cream);">
     <div class="auth-box">
         <h2>&#9881; Booking Settings</h2>
-        <p>Sign in to manage services, hours, and booking rules.</p>
-        <form id="loginForm" onsubmit="return handleLogin(event)">
-            <div class="auth-form-group">
-                <label for="loginUser">Username</label>
-                <input type="text" id="loginUser" autocomplete="username" required>
-            </div>
-            <div class="auth-form-group">
-                <label for="loginPass">Password</label>
-                <input type="password" id="loginPass" autocomplete="current-password" required>
-            </div>
-            <p class="auth-error" id="loginError">Invalid username or password.</p>
-            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
-        </form>
+        <p>Sign in with an authorized Google account to manage services, hours, and booking rules.</p>
+        <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+        <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
         <div style="margin-top:1.5rem;">
             <a href="admin.html" style="font-size:.85rem;color:var(--color-text-muted);">&#8592; Back to Admin Hub</a>
         </div>
@@ -250,33 +240,17 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="js/admin-auth.js"></script>
 <script>
 /* ============================================================================
    ADMIN BOOKING SETTINGS
    ============================================================================ */
 
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
-
 var CONFIG = null; // loaded from Apps Script
 
 /* ── Auth ─────────────────────────────────────────────────────────────────── */
-function handleLogin(e) {
-    e.preventDefault();
-    var user = document.getElementById('loginUser').value;
-    var pass = document.getElementById('loginPass').value;
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        sessionStorage.setItem('rc_admin_auth', '1');
-        showAdmin();
-    } else {
-        document.getElementById('loginError').style.display = 'block';
-    }
-    return false;
-}
-
 function handleLogout() {
-    sessionStorage.removeItem('rc_admin_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 
@@ -286,9 +260,11 @@ function showAdmin() {
     loadConfig();
 }
 
-(function checkSession() {
-    if (sessionStorage.getItem('rc_admin_auth') === '1') showAdmin();
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showAdmin,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 
 /* ── Tab switching ─────────────────────────────────────────────────────────── */
 function switchTab(name, btn) {
@@ -303,9 +279,9 @@ function loadConfig() {
     document.getElementById('loadingSection').style.display = 'block';
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
 
-    fetch(APPS_SCRIPT_URL + '?action=getConfig')
-        .then(function(r) { return r.json(); })
+    rcAdmin.call('adminConfig')
         .then(function(data) {
+            if (data && data.error === 'unauthorized') { location.reload(); return; }
             // If getConfig isn't deployed yet, fall back to defaults
             CONFIG = data.error ? getDefaultConfig() : data;
             showTabs();
@@ -614,24 +590,19 @@ function saveRules() {
    SAVE TO APPS SCRIPT
 ════════════════════════════════════════════════════ */
 function postSave(payload, successMsg) {
-    payload.type = 'saveConfig';
-    fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
+    rcAdmin.call('saveConfig', payload)
     .then(function(data) {
         if (data.ok) {
             showToast(successMsg || 'Saved!');
+        } else if (data.error === 'unauthorized') {
+            showToast('Session expired. Please sign in again.', 6000);
+            setTimeout(function() { location.reload(); }, 1500);
         } else {
             showToast('Save failed: ' + (data.error || 'Unknown error'), 6000);
         }
     })
     .catch(function() {
-        // If Apps Script CORS blocks the response we still show optimistic success
-        // since GAS always processes the POST
-        showToast(successMsg || 'Saved!');
+        showToast('Could not reach the server. Your changes were not saved.', 6000);
     });
 }
 
