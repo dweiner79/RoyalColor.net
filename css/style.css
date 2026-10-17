@@ -1395,7 +1395,17 @@ ul { list-style: none; }
     .hero-text { margin: 0 auto 2rem; }
     .hero-buttons { justify-content: center; }
     .hero-stats { justify-content: center; }
-    .hero-visual { display: none; }
+    .hero-visual {
+        order: -1;
+        width: min(100%, 340px);
+        margin: 0 auto 2rem;
+    }
+    .hero-image-wrapper { aspect-ratio: 4/5; }
+    .hero-color-swatches { right: -14px; }
+    .hero-swatch { width: 36px; height: 36px; border-width: 2px; }
+    .hero-float-card { padding: 0.6rem 0.9rem; }
+    .hero-float-card.card-1 { left: -14px; bottom: 8%; }
+    .hero-float-card.card-2 { right: -14px; top: 6%; }
 
     .seasons-grid { grid-template-columns: repeat(2, 1fr); }
     .services-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1441,7 +1451,9 @@ ul { list-style: none; }
         z-index: 1001;
     }
 
-    .hero { padding-top: 6rem; }
+    .hero { padding-top: 9.5rem; }
+    .hero-float-card.card-2 { display: none; }
+    .hero-color-swatches { right: 8px; }
 
     .seasons-grid { grid-template-columns: 1fr 1fr; }
     .services-grid { grid-template-columns: 1fr; }
@@ -1469,5 +1481,9 @@ ul { list-style: none; }
     .section { padding: 4rem 0; }
     .seasons-grid { grid-template-columns: 1fr; }
     .steps-grid { grid-template-columns: 1fr; }
-    .hero-stats { flex-direction: column; gap: 1rem; }
+    .hero-visual { width: min(100%, 260px); margin-bottom: 1.5rem; }
+    .hero-stats { gap: 1rem; }
+    .hero-stat { text-align: center; }
+    .hero-stat-number { font-size: 1.5rem; }
+    .hero-stat-label { font-size: 0.65rem; letter-spacing: 0.5px; }
 }
