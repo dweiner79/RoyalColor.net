@@ -112,28 +112,28 @@ function doPost(e) {
       // Analytics beacon — log and return quickly
       result = logAnalyticsEvent(data);
     } else if (data.type === 'adminLogin') {
-      result = checkAdminKey(data.key) ? { ok: true } : { ok: false, error: 'unauthorized' };
+      result = checkAdmin(data.idToken) ? { ok: true } : { ok: false, error: 'unauthorized' };
     } else if (data.type === 'adminAnalytics') {
-      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getAnalyticsData(
+      result = !checkAdmin(data.idToken) ? { error: 'unauthorized' } : getAnalyticsData(
         data.days  ? parseInt(data.days)  : 30,
         data.hours ? parseInt(data.hours) : null
       );
     } else if (data.type === 'adminLeads') {
-      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getLeads(data.limit ? parseInt(data.limit) : 500);
+      result = !checkAdmin(data.idToken) ? { error: 'unauthorized' } : getLeads(data.limit ? parseInt(data.limit) : 500);
     } else if (data.type === 'adminConfig') {
-      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getBookingConfig();
+      result = !checkAdmin(data.idToken) ? { error: 'unauthorized' } : getBookingConfig();
     } else if (data.type === 'saveConfig') {
       // Admin config save
-      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : saveBookingConfig(data);
+      result = !checkAdmin(data.idToken) ? { ok: false, error: 'unauthorized' } : saveBookingConfig(data);
     } else if (data.type === 'intake') {
       // Customer intake form (event QR-code lead capture)
       result = logIntake(data);
     } else if (data.type === 'addLead') {
       // Admin manually adds a lead
-      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : addLead(data);
+      result = !checkAdmin(data.idToken) ? { ok: false, error: 'unauthorized' } : addLead(data);
     } else if (data.type === 'deleteLead') {
       // Admin deletes a lead by timestamp
-      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : deleteLead(data);
+      result = !checkAdmin(data.idToken) ? { ok: false, error: 'unauthorized' } : deleteLead(data);
     } else {
       // Booking request
       result = createBooking(data);
@@ -149,26 +149,49 @@ function doPost(e) {
 // ============ ADMIN AUTHENTICATION ============
 
 /**
- * Checks the admin password against the ADMIN_KEY script property (set in
- * Project Settings > Script properties, never in code). Fails closed when the
- * property is missing, and locks out after repeated wrong guesses.
+ * Verifies a Google sign-in token and checks the email against ALLOWED_EMAILS.
+ * Script properties (Project Settings > Script properties, never in code):
+ *   GOOGLE_CLIENT_ID  the OAuth client ID the website signs in with
+ *   ALLOWED_EMAILS    comma-separated Google accounts that may use the admin pages
+ * Fails closed when either is missing.
  */
-function checkAdminKey(key) {
-  var expected = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
-  if (!expected || typeof key !== 'string' || key === '') return false;
+function checkAdmin(idToken) {
+  var props = PropertiesService.getScriptProperties();
+  var clientId = props.getProperty('GOOGLE_CLIENT_ID');
+  var allowed = (props.getProperty('ALLOWED_EMAILS') || '').toLowerCase().split(',')
+    .map(function (s) { return s.trim(); })
+    .filter(function (s) { return s; });
+  if (!clientId || !allowed.length || typeof idToken !== 'string' || idToken.length < 20) return false;
 
   var cache = CacheService.getScriptCache();
+  var digest = Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, idToken));
+  if (cache.get('adm_' + digest)) return true;
+
   var failures = parseInt(cache.get('admin_failures') || '0', 10);
-  if (failures >= 10) return false;
+  if (failures >= 20) return false;
 
-  var ok = key.length === expected.length;
-  var diff = 0;
-  for (var i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ (key.charCodeAt(i) || 0);
+  var info = null;
+  try {
+    var response = UrlFetchApp.fetch(
+      'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
+      { muteHttpExceptions: true }
+    );
+    if (response.getResponseCode() === 200) info = JSON.parse(response.getContentText());
+  } catch (e) { info = null; }
+
+  var now = Math.floor(Date.now() / 1000);
+  var ok = !!info &&
+    info.aud === clientId &&
+    (info.iss === 'accounts.google.com' || info.iss === 'https://accounts.google.com') &&
+    String(info.email_verified) === 'true' &&
+    parseInt(info.exp, 10) > now &&
+    allowed.indexOf(String(info.email).toLowerCase()) !== -1;
+
+  if (ok) {
+    cache.put('adm_' + digest, '1', Math.max(1, Math.min(300, parseInt(info.exp, 10) - now)));
+  } else {
+    cache.put('admin_failures', String(failures + 1), 900); // locks for 15 minutes after 20 misses
   }
-  ok = ok && diff === 0;
-
-  if (!ok) cache.put('admin_failures', String(failures + 1), 900); // locks for 15 minutes after 10 misses
   return ok;
 }
 

@@ -69,15 +69,9 @@
 <div id="authLogin" class="auth-screen" style="background:var(--color-cream);">
     <div class="auth-box">
         <h2>Admin</h2>
-        <p class="sub">Sign in to access admin tools.</p>
-        <form onsubmit="return handleLogin(event)">
-            <div class="auth-form-group">
-                <label for="loginPass">Password</label>
-                <input type="password" id="loginPass" autocomplete="current-password" required>
-            </div>
-            <p class="auth-error" id="loginError">Incorrect password, or too many attempts. Try again in 15 minutes.</p>
-            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
-        </form>
+        <p class="sub">Sign in with an authorized Google account.</p>
+        <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+        <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
     </div>
 </div>
 
@@ -144,15 +138,6 @@
 
 <script src="js/admin-auth.js"></script>
 <script>
-function handleLogin(e) {
-    e.preventDefault();
-    rcAdmin.signIn(document.getElementById('loginPass').value).then(function (ok) {
-        if (ok) showHub(); else document.getElementById('loginError').style.display = 'block';
-    }).catch(function () {
-        document.getElementById('loginError').style.display = 'block';
-    });
-    return false;
-}
 function handleLogout() {
     rcAdmin.signOut();
     location.reload();
@@ -161,9 +146,11 @@ function showHub() {
     document.getElementById('authLogin').style.display = 'none';
     document.getElementById('hubMain').style.display = 'block';
 }
-(function check() {
-    if (rcAdmin.hasKey()) rcAdmin.verify().then(function (ok) { if (ok) showHub(); else rcAdmin.signOut(); });
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showHub,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 </script>
 
 </body>

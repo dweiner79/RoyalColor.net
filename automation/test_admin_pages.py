@@ -13,12 +13,13 @@ class AdminPageSecurityTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIsNone(pattern.search(text), f"hard-coded credential found in {path.name}")
 
-    def test_admin_pages_use_server_checked_login(self) -> None:
+    def test_admin_pages_use_google_sign_in(self) -> None:
         for name in ADMIN_PAGES:
             text = (ROOT / name).read_text(encoding="utf-8")
             self.assertIn("js/admin-auth.js", text, name)
-            self.assertIn("rcAdmin.signIn", text, name)
-            self.assertNotIn("loginUser", text, name)
+            self.assertIn("rcAdmin.start", text, name)
+            self.assertIn('id="googleSignIn"', text, name)
+            self.assertNotIn("loginPass", text, name)
 
     def test_customer_data_is_not_fetched_with_plain_get_requests(self) -> None:
         pattern = re.compile(r"action=(getLeads|analytics)")
@@ -29,8 +30,11 @@ class AdminPageSecurityTests(unittest.TestCase):
     def test_apps_script_protects_every_customer_data_action(self) -> None:
         script = (ROOT / "google-apps-script.gs").read_text(encoding="utf-8")
         for action in ("adminAnalytics", "adminLeads", "adminConfig", "saveConfig", "addLead", "deleteLead"):
-            match = re.search(rf"data\.type === '{action}'\) \{{\s*(?://[^\n]*\n\s*)?result = !checkAdminKey", script)
-            self.assertIsNotNone(match, f"{action} must check the admin key")
+            match = re.search(rf"data\.type === '{action}'\) \{{\s*(?://[^\n]*\n\s*)?result = !checkAdmin\(data\.idToken\)", script)
+            self.assertIsNotNone(match, f"{action} must verify the Google sign-in")
+        self.assertIn("ALLOWED_EMAILS", script)
+        self.assertIn("info.aud === clientId", script)
+        self.assertNotIn("@gmail.com", script.split("function checkAdmin")[1].split("// ============ HELPERS")[0])
         self.assertNotIn("result = getLeads(p.limit", script)
         self.assertIn("delete result.calendarId", script)
 

@@ -106,17 +106,9 @@
     <div id="authLogin" class="auth-screen dash-wrap">
         <div class="auth-box">
             <h2>&#128274; Admin Dashboard</h2>
-            <p>Enter your password to view site analytics.</p>
-            <form id="loginForm" onsubmit="return handleLogin(event)">
-                <div class="form-group">
-                    <label for="loginPass">Password</label>
-                    <input type="password" id="loginPass" autocomplete="current-password" required>
-                </div>
-                <p class="auth-error" id="loginError">Incorrect password, or too many attempts. Try again in 15 minutes.</p>
-                <button type="submit" class="btn btn-primary" style="display:inline-block;width:100%;margin-top:.5rem;">
-                    Sign In
-                </button>
-            </form>
+            <p>Sign in with an authorized Google account to view site analytics.</p>
+            <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+            <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
         </div>
     </div>
 
@@ -321,16 +313,6 @@ var currentDays = 30;
 var lastData = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-function handleLogin(e) {
-    e.preventDefault();
-    rcAdmin.signIn(document.getElementById('loginPass').value).then(function (ok) {
-        if (ok) showDashboard(); else document.getElementById('loginError').style.display = 'block';
-    }).catch(function () {
-        document.getElementById('loginError').style.display = 'block';
-    });
-    return false;
-}
-
 function handleLogout() {
     rcAdmin.signOut();
     location.reload();
@@ -342,9 +324,11 @@ function showDashboard() {
     loadDashboard();
 }
 
-(function checkSession() {
-    if (rcAdmin.hasKey()) rcAdmin.verify().then(function (ok) { if (ok) showDashboard(); else rcAdmin.signOut(); });
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showDashboard,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 
 // ── Load Data ─────────────────────────────────────────────────────────────
 function setRange(days) {
@@ -367,7 +351,7 @@ function loadDashboard() {
         .catch(function(err) {
             document.getElementById('dashLoading').style.display = 'none';
             console.error('Dashboard load error:', err);
-            if (!rcAdmin.hasKey()) location.reload();
+            if (!rcAdmin.hasToken()) location.reload();
         });
 }
 
