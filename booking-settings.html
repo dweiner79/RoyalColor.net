@@ -117,14 +117,10 @@
         <p>Sign in to manage services, hours, and booking rules.</p>
         <form id="loginForm" onsubmit="return handleLogin(event)">
             <div class="auth-form-group">
-                <label for="loginUser">Username</label>
-                <input type="text" id="loginUser" autocomplete="username" required>
-            </div>
-            <div class="auth-form-group">
                 <label for="loginPass">Password</label>
                 <input type="password" id="loginPass" autocomplete="current-password" required>
             </div>
-            <p class="auth-error" id="loginError">Invalid username or password.</p>
+            <p class="auth-error" id="loginError">Incorrect password, or too many attempts. Try again in 15 minutes.</p>
             <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
         </form>
         <div style="margin-top:1.5rem;">
@@ -250,33 +246,27 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="js/admin-auth.js"></script>
 <script>
 /* ============================================================================
    ADMIN BOOKING SETTINGS
    ============================================================================ */
-
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
 
 var CONFIG = null; // loaded from Apps Script
 
 /* ── Auth ─────────────────────────────────────────────────────────────────── */
 function handleLogin(e) {
     e.preventDefault();
-    var user = document.getElementById('loginUser').value;
-    var pass = document.getElementById('loginPass').value;
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        sessionStorage.setItem('rc_admin_auth', '1');
-        showAdmin();
-    } else {
+    rcAdmin.signIn(document.getElementById('loginPass').value).then(function (ok) {
+        if (ok) showAdmin(); else document.getElementById('loginError').style.display = 'block';
+    }).catch(function () {
         document.getElementById('loginError').style.display = 'block';
-    }
+    });
     return false;
 }
 
 function handleLogout() {
-    sessionStorage.removeItem('rc_admin_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 
@@ -287,7 +277,7 @@ function showAdmin() {
 }
 
 (function checkSession() {
-    if (sessionStorage.getItem('rc_admin_auth') === '1') showAdmin();
+    if (rcAdmin.hasKey()) rcAdmin.verify().then(function (ok) { if (ok) showAdmin(); else rcAdmin.signOut(); });
 })();
 
 /* ── Tab switching ─────────────────────────────────────────────────────────── */
@@ -303,9 +293,9 @@ function loadConfig() {
     document.getElementById('loadingSection').style.display = 'block';
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
 
-    fetch(APPS_SCRIPT_URL + '?action=getConfig')
-        .then(function(r) { return r.json(); })
+    rcAdmin.call('adminConfig')
         .then(function(data) {
+            if (data && data.error === 'unauthorized') { location.reload(); return; }
             // If getConfig isn't deployed yet, fall back to defaults
             CONFIG = data.error ? getDefaultConfig() : data;
             showTabs();
@@ -614,24 +604,19 @@ function saveRules() {
    SAVE TO APPS SCRIPT
 ════════════════════════════════════════════════════ */
 function postSave(payload, successMsg) {
-    payload.type = 'saveConfig';
-    fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
+    rcAdmin.call('saveConfig', payload)
     .then(function(data) {
         if (data.ok) {
             showToast(successMsg || 'Saved!');
+        } else if (data.error === 'unauthorized') {
+            showToast('Session expired. Please sign in again.', 6000);
+            setTimeout(function() { location.reload(); }, 1500);
         } else {
             showToast('Save failed: ' + (data.error || 'Unknown error'), 6000);
         }
     })
     .catch(function() {
-        // If Apps Script CORS blocks the response we still show optimistic success
-        // since GAS always processes the POST
-        showToast(successMsg || 'Saved!');
+        showToast('Could not reach the server. Your changes were not saved.', 6000);
     });
 }
 

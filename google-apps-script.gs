@@ -82,20 +82,15 @@ function doGet(e) {
         // Kept for backward compatibility but no longer needed
         result = getAvailableSlots(p.date, parseInt(p.duration));
         break;
-      case 'analytics':
-        // Returns aggregated analytics for the dashboard
-        result = getAnalyticsData(
-          p.days  ? parseInt(p.days)  : 30,
-          p.hours ? parseInt(p.hours) : null
-        );
-        break;
       case 'getConfig':
-        // Returns current booking configuration
+        // Public booking page needs hours and services only; the calendar ID stays private
         result = getBookingConfig();
+        delete result.calendarId;
         break;
+      case 'analytics':
       case 'getLeads':
-        // Returns intake leads for the admin view
-        result = getLeads(p.limit ? parseInt(p.limit) : 500);
+        // Customer data is only available through the authenticated POST actions
+        result = { error: 'unauthorized' };
         break;
       default:
         result = { error: 'Unknown action' };
@@ -116,18 +111,29 @@ function doPost(e) {
     if (data.type === 'analytics') {
       // Analytics beacon — log and return quickly
       result = logAnalyticsEvent(data);
+    } else if (data.type === 'adminLogin') {
+      result = checkAdminKey(data.key) ? { ok: true } : { ok: false, error: 'unauthorized' };
+    } else if (data.type === 'adminAnalytics') {
+      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getAnalyticsData(
+        data.days  ? parseInt(data.days)  : 30,
+        data.hours ? parseInt(data.hours) : null
+      );
+    } else if (data.type === 'adminLeads') {
+      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getLeads(data.limit ? parseInt(data.limit) : 500);
+    } else if (data.type === 'adminConfig') {
+      result = !checkAdminKey(data.key) ? { error: 'unauthorized' } : getBookingConfig();
     } else if (data.type === 'saveConfig') {
       // Admin config save
-      result = saveBookingConfig(data);
+      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : saveBookingConfig(data);
     } else if (data.type === 'intake') {
       // Customer intake form (event QR-code lead capture)
       result = logIntake(data);
     } else if (data.type === 'addLead') {
       // Admin manually adds a lead
-      result = addLead(data);
+      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : addLead(data);
     } else if (data.type === 'deleteLead') {
       // Admin deletes a lead by timestamp
-      result = deleteLead(data);
+      result = !checkAdminKey(data.key) ? { ok: false, error: 'unauthorized' } : deleteLead(data);
     } else {
       // Booking request
       result = createBooking(data);
@@ -138,6 +144,32 @@ function doPost(e) {
 
   return ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============ ADMIN AUTHENTICATION ============
+
+/**
+ * Checks the admin password against the ADMIN_KEY script property (set in
+ * Project Settings > Script properties, never in code). Fails closed when the
+ * property is missing, and locks out after repeated wrong guesses.
+ */
+function checkAdminKey(key) {
+  var expected = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+  if (!expected || typeof key !== 'string' || key === '') return false;
+
+  var cache = CacheService.getScriptCache();
+  var failures = parseInt(cache.get('admin_failures') || '0', 10);
+  if (failures >= 10) return false;
+
+  var ok = key.length === expected.length;
+  var diff = 0;
+  for (var i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ (key.charCodeAt(i) || 0);
+  }
+  ok = ok && diff === 0;
+
+  if (!ok) cache.put('admin_failures', String(failures + 1), 900); // locks for 15 minutes after 10 misses
+  return ok;
 }
 
 // ============ HELPERS ============

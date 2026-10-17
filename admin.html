@@ -72,14 +72,10 @@
         <p class="sub">Sign in to access admin tools.</p>
         <form onsubmit="return handleLogin(event)">
             <div class="auth-form-group">
-                <label for="loginUser">Username</label>
-                <input type="text" id="loginUser" autocomplete="username" required>
-            </div>
-            <div class="auth-form-group">
                 <label for="loginPass">Password</label>
                 <input type="password" id="loginPass" autocomplete="current-password" required>
             </div>
-            <p class="auth-error" id="loginError">Invalid username or password.</p>
+            <p class="auth-error" id="loginError">Incorrect password, or too many attempts. Try again in 15 minutes.</p>
             <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Sign In</button>
         </form>
     </div>
@@ -146,25 +142,19 @@
     </div>
 </div>
 
+<script src="js/admin-auth.js"></script>
 <script>
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
-
 function handleLogin(e) {
     e.preventDefault();
-    var u = document.getElementById('loginUser').value;
-    var p = document.getElementById('loginPass').value;
-    if (u === ADMIN_USER && p === ADMIN_PASS) {
-        sessionStorage.setItem('rc_admin_auth', '1');
-        showHub();
-    } else {
+    rcAdmin.signIn(document.getElementById('loginPass').value).then(function (ok) {
+        if (ok) showHub(); else document.getElementById('loginError').style.display = 'block';
+    }).catch(function () {
         document.getElementById('loginError').style.display = 'block';
-    }
+    });
     return false;
 }
 function handleLogout() {
-    sessionStorage.removeItem('rc_admin_auth');
-    sessionStorage.removeItem('rc_leads_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 function showHub() {
@@ -172,7 +162,7 @@ function showHub() {
     document.getElementById('hubMain').style.display = 'block';
 }
 (function check() {
-    if (sessionStorage.getItem('rc_admin_auth') === '1') showHub();
+    if (rcAdmin.hasKey()) rcAdmin.verify().then(function (ok) { if (ok) showHub(); else rcAdmin.signOut(); });
 })();
 </script>
 
