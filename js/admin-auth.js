@@ -1,7 +1,7 @@
 /* Shared admin sign-in with Google. The Apps Script server verifies the Google ID token and checks the allowed-email list. */
 (function (global) {
     var ENDPOINT = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-    var CLIENT_ID = 'GOOGLE_CLIENT_ID_PLACEHOLDER';
+    var CLIENT_ID = '931863395642-jasf82fmnis5phd9rfa0ljfv687qpkqm.apps.googleusercontent.com';
     var STORE = 'rc_admin_token';
 
     function call(type, payload, token) {

@@ -21,6 +21,11 @@ class AdminPageSecurityTests(unittest.TestCase):
             self.assertIn('id="googleSignIn"', text, name)
             self.assertNotIn("loginPass", text, name)
 
+    def test_google_client_id_is_configured(self) -> None:
+        text = (ROOT / "js" / "admin-auth.js").read_text(encoding="utf-8")
+        self.assertNotIn("PLACEHOLDER", text)
+        self.assertRegex(text, r"CLIENT_ID = '\d+-[a-z0-9]+\.apps\.googleusercontent\.com'")
+
     def test_customer_data_is_not_fetched_with_plain_get_requests(self) -> None:
         pattern = re.compile(r"action=(getLeads|analytics)")
         for name in ADMIN_PAGES:
