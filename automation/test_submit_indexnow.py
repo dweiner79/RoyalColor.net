@@ -11,7 +11,7 @@ class IndexNowSubmissionTests(unittest.TestCase):
 
         urls = sitemap_urls(sitemap_path)
 
-        self.assertEqual(10, len(urls))
+        self.assertEqual(11, len(urls))
         self.assertTrue(all(url.startswith(f"https://{SITE_HOST}/") for url in urls))
 
     def test_sitemap_urls_rejects_external_hosts(self) -> None:
