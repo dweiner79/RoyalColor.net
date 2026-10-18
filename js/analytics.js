@@ -193,7 +193,8 @@
         [25, 50, 75, 100].forEach(function(mark) {
             if (pct >= mark && !depthMarks[mark]) {
                 depthMarks[mark] = true;
-                trackEvent('scroll_depth', mark + '%');
+                // Plain number: Sheets would convert "25%" into 0.25
+                trackEvent('scroll_depth', String(mark));
             }
         });
     }
