@@ -706,8 +706,10 @@ function getAnalyticsData(days, hours) {
 
     // Scroll depth
     if (event === 'scroll_depth') {
-      var depth = parseInt(evData);
-      if (!isNaN(depth)) scrollDepths.push(depth);
+      var depth = parseFloat(evData);
+      // Older rows were stored by Sheets as fractions ("25%" became 0.25); milestones are never below 25
+      if (!isNaN(depth) && depth > 0 && depth <= 1) depth = depth * 100;
+      if (!isNaN(depth)) scrollDepths.push(Math.round(depth));
     }
 
     // Booking funnel
