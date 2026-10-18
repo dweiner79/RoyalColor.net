@@ -75,18 +75,9 @@
 <div id="authLogin" class="auth-screen">
     <div class="auth-box">
         <h2>Leads Login</h2>
-        <form onsubmit="return handleLogin(event)">
-            <div class="auth-form-group">
-                <label for="loginUser">Username</label>
-                <input type="text" id="loginUser" autocomplete="username" required>
-            </div>
-            <div class="auth-form-group">
-                <label for="loginPass">Password</label>
-                <input type="password" id="loginPass" autocomplete="current-password" required>
-            </div>
-            <button type="submit" class="btn-sm btn-purple">Sign In</button>
-            <p class="auth-error" id="loginError">Invalid username or password.</p>
-        </form>
+        <p style="text-align:center;color:var(--color-text-muted);font-size:.9rem;">Sign in with an authorized Google account.</p>
+        <div id="googleSignIn" style="display:flex;justify-content:center;margin:1.25rem 0;"></div>
+        <p class="auth-error" id="loginError">That Google account is not authorized for admin access.</p>
     </div>
 </div>
 
@@ -163,30 +154,15 @@
     </div>
 </div>
 
+<script src="js/admin-auth.js"></script>
 <script>
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz002p5WzAD5id_QnKKpsen1M2iisdCmjwAqXSV_FcmrRuyE30wFAu4R_SHrBkNbk9iiQ/exec';
-var ADMIN_USER = 'Admin';
-var ADMIN_PASS = 'Password!';
-
 var allLeads = [];
 var sortKey = 'timestamp';
 var sortDir = -1;  // -1 = desc (newest first)
 
 /* ── Auth ── */
-function handleLogin(e) {
-    e.preventDefault();
-    var u = document.getElementById('loginUser').value;
-    var p = document.getElementById('loginPass').value;
-    if (u === ADMIN_USER && p === ADMIN_PASS) {
-        sessionStorage.setItem('rc_leads_auth', '1');
-        showLeads();
-    } else {
-        document.getElementById('loginError').style.display = 'block';
-    }
-    return false;
-}
 function handleLogout() {
-    sessionStorage.removeItem('rc_leads_auth');
+    rcAdmin.signOut();
     location.reload();
 }
 function showLeads() {
@@ -194,17 +170,19 @@ function showLeads() {
     document.getElementById('leadsMain').style.display = 'block';
     loadLeads();
 }
-(function check() {
-    if (sessionStorage.getItem('rc_leads_auth') === '1') showLeads();
-})();
+rcAdmin.start({
+    container: 'googleSignIn',
+    onSignedIn: showLeads,
+    onDenied: function () { document.getElementById('loginError').style.display = 'block'; }
+});
 
 /* ── Data ── */
 function loadLeads() {
     document.getElementById('tableContainer').innerHTML = '<div class="loading">Loading leads…</div>';
     document.getElementById('leadsMeta').textContent = 'Loading…';
-    fetch(APPS_SCRIPT_URL + '?action=getLeads&limit=1000')
-        .then(function(r){ return r.json(); })
+    rcAdmin.call('adminLeads', { limit: 1000 })
         .then(function(j){
+            if (j.error === 'unauthorized') { location.reload(); return; }
             if (j.error) {
                 document.getElementById('tableContainer').innerHTML = '<div class="empty">Error: ' + escapeHtml(j.error) + '</div>';
                 return;
@@ -357,12 +335,7 @@ function submitAddLead(e) {
     };
     if (!payload.name) { err.textContent = 'Name is required.'; err.style.display = 'block'; return false; }
     btn.disabled = true; btn.textContent = 'Saving…';
-    fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-    })
-    .then(function(r){ return r.json(); })
+    rcAdmin.call('addLead', payload)
     .then(function(j){
         btn.disabled = false; btn.textContent = 'Save Lead';
         if (j && j.ok) {
@@ -385,12 +358,7 @@ function submitAddLead(e) {
 function deleteLead(id, name) {
     if (!id) return;
     if (!confirm('Delete lead for ' + (name || 'this person') + '? This cannot be undone.')) return;
-    fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ type: 'deleteLead', id: id })
-    })
-    .then(function(r){ return r.json(); })
+    rcAdmin.call('deleteLead', { id: id })
     .then(function(j){
         if (j && j.ok) {
             allLeads = allLeads.filter(function(r){ return r.id !== id; });
