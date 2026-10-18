@@ -266,6 +266,10 @@
                 <div style="margin-top:1.5rem;text-align:center;">
                     <button class="btn btn-primary btn-lg" id="confirmBtn" onclick="submitBooking()">Confirm Booking &#10003;</button>
                 </div>
+                <div id="confirmUncertain" role="alert" style="display:none;margin-top:1.25rem;padding:1rem 1.25rem;background:#fff8e6;border:1.5px solid var(--color-gold);border-radius:var(--radius-md);text-align:left;">
+                    <strong>We couldn&rsquo;t confirm your booking.</strong>
+                    <p style="margin:.35rem 0 0;font-size:.92rem;">It may or may not have gone through. Please don&rsquo;t book again yet. Call <a href="tel:+13055285888">(305) 528-5888</a> or check your email for a confirmation first.</p>
+                </div>
             </div>
 
             <!-- Shown after confirmation -->
@@ -817,6 +821,7 @@ function submitBooking() {
     var btn = document.getElementById('confirmBtn');
     btn.disabled = true;
     btn.textContent = 'Confirming…';
+    document.getElementById('confirmUncertain').style.display = 'none';
 
     var payload = {
         date:      S.selDate,
@@ -846,8 +851,10 @@ function submitBooking() {
         }
     })
     .catch(function() {
-        // Show confirmation anyway — calendar may still work
-        showConfirmation(payload.name.split(' ')[0]);
+        // The request may have reached the server, so don't claim success or failure.
+        btn.disabled = false;
+        btn.textContent = 'Confirm Booking ✓';
+        document.getElementById('confirmUncertain').style.display = 'block';
     });
 }
 
