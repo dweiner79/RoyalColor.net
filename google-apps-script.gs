@@ -634,7 +634,7 @@ function getAnalyticsData(days, hours) {
   var pageCounts  = {};
   var visitors    = {};
   var sessions    = {};
-  var newVisitors = {};
+  var firstSeenMs = {};
   var referrers   = {};
   var devices     = { mobile: 0, tablet: 0, desktop: 0 };
   var cities      = {};
@@ -657,6 +657,14 @@ function getAnalyticsData(days, hours) {
     var day = row[1] instanceof Date
       ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd')
       : (row[1] || '').toString().substring(0, 10);
+
+    // First time each visitor was ever seen, including rows before the period, to tell new from returning
+    var firstVid = (row[9] || '').toString();
+    if (firstVid) {
+      var firstMs = row[0] instanceof Date ? row[0].getTime() : new Date((row[0] || '').toString()).getTime();
+      if (!firstMs || isNaN(firstMs)) firstMs = new Date(day).getTime();
+      if (!isNaN(firstMs) && (firstSeenMs[firstVid] === undefined || firstMs < firstSeenMs[firstVid])) firstSeenMs[firstVid] = firstMs;
+    }
 
     // For 24h mode compare exact timestamp; for day mode compare date string
     if (useHourCutoff) {
@@ -719,9 +727,6 @@ function getAnalyticsData(days, hours) {
     // Unique visitors & sessions
     if (vid) visitors[vid] = true;
     if (sid) sessions[sid] = true;
-
-    // New vs returning: flag visitor as new if first seen in this period
-    if (vid && !newVisitors[vid]) newVisitors[vid] = day;
 
     // Referrers
     if (ref) {
@@ -831,8 +836,8 @@ function getAnalyticsData(days, hours) {
   // New vs returning: visitor is "new" if their first-seen date is within the cutoff window
   var totalVisitorCount = Object.keys(visitors).length;
   var newVisitorCount = 0;
-  for (var v in newVisitors) {
-    if (newVisitors[v] >= cutoffStr) newVisitorCount++;
+  for (var v in visitors) {
+    if (firstSeenMs[v] === undefined || firstSeenMs[v] >= cutoffMs) newVisitorCount++;
   }
   var returningVisitorCount = totalVisitorCount - newVisitorCount;
 
