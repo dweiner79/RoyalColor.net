@@ -3,6 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    // Phones get the mobile booking page; crawlers stay here so search indexing is unaffected.
+    (function () {
+        try {
+            if (/[?&]classic=1/.test(location.search)) sessionStorage.setItem('rc_classic', '1');
+            var bot = /bot|crawl|spider|slurp|lighthouse|facebookexternalhit|preview/i.test(navigator.userAgent);
+            var phone = window.matchMedia('(max-width: 768px)').matches && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+            if (phone && !bot && !sessionStorage.getItem('rc_classic')) location.replace('booking-mobile.html');
+        } catch (e) {}
+    })();
+    </script>
     <title>Book Color Analysis in South Florida | Royal Color</title>
     <meta name="description" content="Book a 90-minute personal color analysis in South Florida for $279. Check availability for Broward, Miami-Dade, and Palm Beach County sessions.">
     <link rel="canonical" href="https://www.royalcolor.net/booking.html">

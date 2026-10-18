@@ -253,7 +253,7 @@
 
 <p class="foot">
     Questions? <a href="tel:+13055285888">(305) 528-5888</a> &middot; <a href="mailto:royalcoloranalysis@gmail.com">Email us</a><br>
-    <a href="booking.html">Use the classic booking page</a>
+    <a href="booking.html?classic=1">Use the classic booking page</a>
 </p>
 
 <div class="bar" id="bar">
@@ -361,6 +361,7 @@ function goStep(n, fromHistory) {
     if (n > 1 && !S.svc) n = 1;
     if (n > 2 && (!S.selDate || !S.selTime)) n = 2;
     S.step = n;
+    if (window.rcAnalytics) window.rcAnalytics.trackEvent('booking_step', ['service', 'datetime', 'details', 'payment'][n - 1]);
 
     for (var i = 1; i <= 4; i++) $('panel' + i).classList.toggle('active', i === n);
     var dots = $('progressBar').children;
@@ -649,6 +650,7 @@ function submitBooking() {
 
 function showDone(first) {
     S.done = true;
+    if (window.rcAnalytics) window.rcAnalytics.trackEvent('booking_complete', S.svc.name);
     $('reviewBox').hidden = true;
     $('doneBox').hidden = false;
     $('doneMsg').textContent = 'Thank you, ' + first + '! Your ' + S.svc.name + ' is booked for ' + shortDate(S.selDate) + ' at ' + fmtTime(S.selTime) + '.';
@@ -660,5 +662,6 @@ function showDone(first) {
     window.scrollTo(0, 0);
 }
 </script>
+<script src="js/analytics.js"></script>
 </body>
 </html>
